@@ -4,6 +4,7 @@ from datetime import datetime
 import customtkinter as ctk
 from PIL import Image
 import ctypes
+from tkinter import messagebox
 from model.theme_manager import ThemeManager
 from view.auto_view import AutoView
 from view.teach_view import TeachView
@@ -19,6 +20,11 @@ def get_logo_path() -> pathlib.Path:
 
 
 class MainView(ctk.CTk):
+
+    # Password required before opening configuration pages.
+    # Change this value to the required operator password.
+    ACCESS_PASSWORD = "1111"
+
     def __init__(self, viewmodel=None):
         super().__init__()
 
@@ -286,12 +292,21 @@ class MainView(ctk.CTk):
 
     def _finish_startup(self):
         self._close_startup_dialog()
+
+        # Reveal the fully constructed application first.
         self.deiconify()
+
         try:
             self.state("zoomed")
         except Exception:
             pass
+
         self.update_idletasks()
+
+        # Now that the main window is visible and the camera widgets have
+        # real dimensions, capture one preview frame for each camera.
+        if self.auto_view is not None:
+            self.auto_view.capture_initial_preview()
 
     # -------------------------------------------------------------
     # Theme
@@ -621,7 +636,7 @@ class MainView(ctk.CTk):
         self.teach_button = FooterButton(
             self.footer,
             text="TEACH",
-            command=self._show_teach_view,
+            command=self._request_teach_access,
         )
         self.teach_button.grid(
             row=0,
@@ -634,7 +649,7 @@ class MainView(ctk.CTk):
         self.system_button = FooterButton(
             self.footer,
             text="SYSTEM",
-            command=self._show_system_view,
+            command=self._request_system_access,
         )
         self.system_button.grid(
             row=0,
@@ -647,7 +662,7 @@ class MainView(ctk.CTk):
         self.exit_button = FooterButton(
             self.footer,
             text="EXIT",
-            command=self._close,
+            command=self._confirm_exit,
         )
         self.exit_button.grid(
             row=0,
@@ -759,13 +774,7 @@ class MainView(ctk.CTk):
 
     def _show_teach_view(self):
         if self.auto_viewmodel.is_monitoring:
-            self.auto_view.stop_monitoring()
-            self.start_button.configure(
-                text=self.theme_manager.get(
-                    "footer.buttons.START.text",
-                    "START",
-                )
-            )
+            return
 
         if self.currentContent is self.system_view:
             self._reload_operational_configuration()
@@ -786,14 +795,10 @@ class MainView(ctk.CTk):
         )
 
     def _show_system_view(self):
+
         if self.auto_viewmodel.is_monitoring:
-            self.auto_view.stop_monitoring()
-            self.start_button.configure(
-                text=self.theme_manager.get(
-                    "footer.buttons.START.text",
-                    "START",
-                )
-            )
+            return
+
 
         self._hide_current_view()
 
@@ -857,14 +862,22 @@ class MainView(ctk.CTk):
 
         if self.auto_viewmodel.is_monitoring:
             self.auto_view.stop_monitoring()
+
+            self._set_monitoring_navigation_state(
+                False
+            )
+
             self._update_start_button_text()
             return
 
         started = self.auto_view.start_monitoring()
 
         if started:
-            self._update_start_button_text()
+            self._set_monitoring_navigation_state(
+                True
+            )
 
+            self._update_start_button_text()
     def _update_start_button_text(self):
         if self.auto_viewmodel.is_monitoring:
             text = self.theme_manager.get(
@@ -892,7 +905,6 @@ class MainView(ctk.CTk):
     # Window controls
     # -------------------------------------------------------------
     def _minimize(self, event=None):
-        import ctypes
         from ctypes import wintypes
 
         try:
@@ -971,6 +983,284 @@ class MainView(ctk.CTk):
             | SWP_NOZORDER
             | SWP_NOACTIVATE
             | SWP_FRAMECHANGED,
+        )
+    # -------------------------------------------------------------
+    # Protected page access
+    # -------------------------------------------------------------
+
+    def _request_teach_access(self):
+        if self.auto_viewmodel.is_monitoring:
+            return
+
+        if self._request_password("TEACH"):
+            self._show_teach_view()
+
+    def _request_system_access(self):
+        if self.auto_viewmodel.is_monitoring:
+            return
+
+        if self._request_password("SYSTEM"):
+            self._show_system_view()
+
+    def _request_password(self, page_name):
+        """
+        Ask for the operator password before opening a protected page.
+
+        Returns:
+            True when the supplied password is correct.
+        """
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("")
+        self._remove_windows_titlebar(dialog)
+
+        dialog_width = 420
+        dialog_height = 220
+
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+
+        x = max(
+            0,
+            (screen_width - dialog_width) // 2,
+        )
+        y = max(
+            0,
+            (screen_height - dialog_height) // 2,
+        )
+
+        dialog.geometry(
+            f"{dialog_width}x{dialog_height}+{x}+{y}"
+        )
+        dialog.resizable(False, False)
+
+        window_bg = self._theme_color(
+            "colors.window_background",
+            "#111111",
+        )
+        frame_bg = self._theme_color(
+            "colors.frame_background",
+            "#1B1B1B",
+        )
+        border_color = self._theme_color(
+            "colors.frame_foreground",
+            "#252525",
+        )
+        text_primary = self._theme_color(
+            "colors.text_primary",
+            "#F2F2F2",
+        )
+        text_secondary = self._theme_color(
+            "colors.text_secondary",
+            "#B8B8B8",
+        )
+        button_color = self._theme_color(
+            "colors.button.foreground",
+            "#2D6A4F",
+        )
+        button_hover = self._theme_color(
+            "colors.button.hover",
+            "#22543D",
+        )
+        button_text = self._theme_color(
+            "colors.button.text",
+            "#FFFFFF",
+        )
+
+        dialog.configure(
+            fg_color=window_bg
+        )
+
+        container = ctk.CTkFrame(
+            dialog,
+            fg_color=frame_bg,
+            corner_radius=12,
+            border_width=1,
+            border_color=border_color,
+        )
+        container.pack(
+            fill="both",
+            expand=True,
+            padx=1,
+            pady=1,
+        )
+
+        title = ctk.CTkLabel(
+            container,
+            text=f"{page_name} ACCESS",
+            text_color=text_primary,
+            font=self._theme_font(
+                "view_title",
+                fallback_size=22,
+                fallback_weight="bold",
+            ),
+        )
+        title.pack(
+            padx=20,
+            pady=(22, 5),
+        )
+
+        instruction = ctk.CTkLabel(
+            container,
+            text="Enter operator password",
+            text_color=text_secondary,
+            font=self._theme_font(
+                "normal",
+                fallback_size=14,
+            ),
+        )
+        instruction.pack(
+            padx=20,
+            pady=(0, 12),
+        )
+
+        password_entry = ctk.CTkEntry(
+            container,
+            width=280,
+            show="*",
+            font=self._theme_font(
+                "normal",
+                fallback_size=14,
+            ),
+        )
+        password_entry.pack(
+            padx=20,
+            pady=(0, 15),
+        )
+
+        result = {
+            "authenticated": False,
+        }
+
+        def submit():
+            password = password_entry.get()
+
+            if password == self.ACCESS_PASSWORD:
+                result["authenticated"] = True
+                dialog.destroy()
+                return
+
+            error_label.configure(
+                text="Incorrect password."
+            )
+
+            password_entry.delete(
+                0,
+                "end",
+            )
+            password_entry.focus_set()
+
+        def cancel():
+            dialog.destroy()
+
+        button_frame = ctk.CTkFrame(
+            container,
+            fg_color="transparent",
+        )
+        button_frame.pack(
+            padx=20,
+            pady=(0, 15),
+        )
+
+        ctk.CTkButton(
+            button_frame,
+            text="CANCEL",
+            command=cancel,
+            width=120,
+            fg_color=border_color,
+            hover_color=button_hover,
+            text_color=button_text,
+        ).grid(
+            row=0,
+            column=0,
+            padx=5,
+        )
+
+        ctk.CTkButton(
+            button_frame,
+            text="ENTER",
+            command=submit,
+            width=120,
+            fg_color=button_color,
+            hover_color=button_hover,
+            text_color=button_text,
+        ).grid(
+            row=0,
+            column=1,
+            padx=5,
+        )
+
+        error_label = ctk.CTkLabel(
+            container,
+            text="",
+            text_color="#D9534F",
+            font=self._theme_font(
+                "normal",
+                fallback_size=12,
+            ),
+        )
+        error_label.pack(
+            padx=20,
+            pady=(0, 5),
+        )
+
+        password_entry.bind(
+            "<Return>",
+            lambda event: submit(),
+        )
+        password_entry.bind(
+            "<Escape>",
+            lambda event: cancel(),
+        )
+
+        dialog.protocol(
+            "WM_DELETE_WINDOW",
+            cancel,
+        )
+
+        try:
+            dialog.grab_set()
+        except Exception:
+            pass
+
+        password_entry.focus_set()
+
+        self.wait_window(dialog)
+
+        return result["authenticated"]
+
+    # -------------------------------------------------------------
+    # Exit confirmation
+    # -------------------------------------------------------------
+
+    def _confirm_exit(self):
+        """
+        Ask for confirmation before shutting down the application.
+        """
+        confirmed = messagebox.askyesno(
+            "Exit Application",
+            "Are you sure you want to exit?",
+            parent=self,
+        )
+
+        if confirmed:
+            self._close()
+
+    def _set_monitoring_navigation_state(self, monitoring):
+        """
+        Disable configuration/navigation actions while detection is running.
+        """
+        state = "disabled" if monitoring else "normal"
+
+        self.teach_button.configure(
+            state=state
+        )
+
+        self.system_button.configure(
+            state=state
+        )
+
+        self.exit_button.configure(
+            state=state
         )
 
 

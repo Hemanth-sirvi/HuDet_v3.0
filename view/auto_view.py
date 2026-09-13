@@ -237,7 +237,7 @@ class AutoView(ctk.CTkFrame):
             )
 
         self._refresh_status()
-
+        self.after(300, self._capture_initial_frames)
     # -------------------------------------------------------------
     # Theme
     # -------------------------------------------------------------
@@ -759,6 +759,7 @@ class AutoView(ctk.CTkFrame):
         self._connect_viewmodel()
         self._refresh_status()
 
+
     def _connect_viewmodel(self):
         if self.vm is None:
             return
@@ -1059,6 +1060,14 @@ class AutoView(ctk.CTkFrame):
 
             width = camera.winfo_width()
             height = camera.winfo_height()
+
+            # The widget may not have received its final geometry yet.
+            # Force geometry calculation once before giving up.
+            if width <= 1 or height <= 1:
+                camera.update_idletasks()
+
+                width = camera.winfo_width()
+                height = camera.winfo_height()
 
             if width <= 1 or height <= 1:
                 return
@@ -1557,3 +1566,109 @@ class AutoView(ctk.CTkFrame):
                 pass
 
         super().destroy()
+    # -------------------------------------------------------------
+    # Initial camera preview
+    # -------------------------------------------------------------
+
+    def _capture_initial_frames(self):
+        """
+        Capture one frame from each configured camera and display it
+        without starting monitoring, detection, or tracking.
+        """
+        if self.vm is None:
+            return
+
+        cameras = getattr(
+            self.vm,
+            "cameras",
+            None,
+        )
+
+        if not isinstance(cameras, list):
+            return
+
+        # Make sure camera widgets have calculated their actual sizes
+        # before _display_frame() tries to scale the image.
+        self.update_idletasks()
+        self.cameraFrame.update_idletasks()
+
+        for camera_index, camera in enumerate(cameras):
+            if camera_index >= self.camera_count:
+                break
+
+            # Never interfere with an active monitoring session.
+            if getattr(self.vm, "is_monitoring", False):
+                return
+
+            try:
+                if not camera.open():
+                    message = (
+                        f"Camera{camera_index + 1} failed to open"
+                    )
+
+                    self.camera_open_failed[camera_index] = True
+                    self.camera_error_messages[camera_index] = message
+
+                    self._show_camera_error(
+                        camera_index,
+                        message,
+                    )
+                    continue
+
+                success, frame = camera.read()
+
+                if not success or frame is None:
+                    message = (
+                        f"Camera{camera_index + 1} failed to read"
+                    )
+
+                    self.camera_open_failed[camera_index] = True
+                    self.camera_error_messages[camera_index] = message
+
+                    self._show_camera_error(
+                        camera_index,
+                        message,
+                    )
+                    continue
+
+                self.camera_open_failed[camera_index] = False
+                self.camera_error_messages[camera_index] = None
+
+                # Make sure the individual camera frame has a usable
+                # size before asking _display_frame() to scale the image.
+                self.camera_frames[camera_index].update_idletasks()
+
+                self._display_frame(
+                    camera_index,
+                    frame,
+                    tracked_detections=None,
+                )
+
+            except Exception as exc:
+                self.camera_open_failed[camera_index] = True
+
+                self._on_error(
+                    camera_index,
+                    f"Initial camera preview error: {exc}",
+                )
+
+            finally:
+                # The preview is only one frame. Release the camera
+                # immediately so START can reopen it normally.
+                try:
+                    camera.release()
+                except Exception:
+                    pass
+    def capture_initial_preview(self):
+        """
+        Capture and display one frame from each configured camera.
+
+        This is intended to be called after Auto View has been placed
+        and the main application window has been displayed.
+        """
+        if self.vm is None:
+            return
+
+        self.after_idle(
+            self._capture_initial_frames
+        )
