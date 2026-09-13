@@ -23,6 +23,10 @@ class DirectionModel:
 
         self._validate_configuration()
 
+    # ------------------------------------------------------------------
+    # Configuration
+    # ------------------------------------------------------------------
+
     def _validate_configuration(self):
         if self.enter_side not in ("positive", "negative"):
             raise ValueError(
@@ -39,6 +43,16 @@ class DirectionModel:
                 raise ValueError(
                     "line_start and line_end cannot be the same point."
                 )
+
+        if self.minimum_movement < 0:
+            raise ValueError(
+                "minimum_movement cannot be negative."
+            )
+
+        if self.cooldown_frames < 0:
+            raise ValueError(
+                "cooldown_frames cannot be negative."
+            )
 
     def set_line(self, line_start, line_end):
         """Set or update the virtual counting line."""
@@ -63,6 +77,10 @@ class DirectionModel:
         self.enter_side = enter_side
         self._tracks.clear()
 
+    # ------------------------------------------------------------------
+    # Tracking / direction processing
+    # ------------------------------------------------------------------
+
     def update(self, tracked_detections):
         """
         Process the current frame's tracked people.
@@ -71,6 +89,7 @@ class DirectionModel:
             tracked_detections:
                 List of tracked detection dictionaries from TrackingModel.
                 Each item must contain:
+
                     {
                         "track_id": int,
                         "centroid": (x, y),
@@ -78,6 +97,7 @@ class DirectionModel:
 
         Returns:
             List of crossing events:
+
                 {
                     "track_id": int,
                     "direction": "ENTER" or "EXIT",
@@ -91,29 +111,37 @@ class DirectionModel:
             tracked_detections = []
 
         self.frame_count += 1
+
         events = []
         active_track_ids = set()
 
         for detection in tracked_detections:
-            if "track_id" not in detection or "centroid" not in detection:
+            if (
+                "track_id" not in detection
+                or "centroid" not in detection
+            ):
                 continue
 
             track_id = detection["track_id"]
             centroid = tuple(detection["centroid"])
+
             active_track_ids.add(track_id)
 
             current_side = self._get_side(centroid)
 
-            if current_side == 0:
-                # The centroid is directly on the line.
-                continue
-
             track = self._tracks.get(track_id)
 
+            # ----------------------------------------------------------
+            # First observation of this track
+            # ----------------------------------------------------------
             if track is None:
                 self._tracks[track_id] = {
                     "previous_centroid": centroid,
-                    "previous_side": current_side,
+                    "previous_side": (
+                        current_side
+                        if current_side != 0
+                        else None
+                    ),
                     "last_crossing_frame": None,
                     "last_direction": None,
                 }
@@ -122,17 +150,46 @@ class DirectionModel:
             previous_centroid = track["previous_centroid"]
             previous_side = track["previous_side"]
 
-            movement = self._distance(previous_centroid, centroid)
+            movement = self._distance(
+                previous_centroid,
+                centroid,
+            )
 
+            # ----------------------------------------------------------
+            # IMPORTANT:
+            #
+            # When the centroid is directly on the line, do NOT discard
+            # the track's previous side. Update the centroid so movement
+            # remains continuous, but retain the last non-zero side.
+            #
+            # Example:
+            #     positive -> line -> negative
+            #
+            # The track remains associated with the positive side while
+            # it is on the line, allowing the next negative position to
+            # correctly produce a crossing event.
+            # ----------------------------------------------------------
+            if current_side == 0:
+                track["previous_centroid"] = centroid
+                continue
+
+            # ----------------------------------------------------------
             # Ignore tiny movements/noise.
+            #
+            # The side is intentionally preserved when movement is below
+            # the threshold. This prevents small jitter across the line
+            # from immediately becoming a crossing.
+            # ----------------------------------------------------------
             if movement < self.minimum_movement:
                 track["previous_centroid"] = centroid
                 continue
 
-            # A side change means the person crossed the line.
+            # ----------------------------------------------------------
+            # A valid side change means the person crossed the line.
+            # ----------------------------------------------------------
             if (
-                previous_side != current_side
-                and previous_side != 0
+                previous_side is not None
+                and previous_side != current_side
                 and current_side != 0
             ):
                 if self._is_crossing_allowed(track):
@@ -150,19 +207,32 @@ class DirectionModel:
                             }
                         )
 
-                        track["last_crossing_frame"] = self.frame_count
+                        track["last_crossing_frame"] = (
+                            self.frame_count
+                        )
                         track["last_direction"] = direction
 
+            # ----------------------------------------------------------
+            # Only store a non-zero side as the new side reference.
+            # ----------------------------------------------------------
             track["previous_centroid"] = centroid
             track["previous_side"] = current_side
 
-        # Remove tracks that are no longer present.
-        stale_track_ids = set(self._tracks.keys()) - active_track_ids
+        # --------------------------------------------------------------
+        # Remove tracks that are no longer active.
+        # --------------------------------------------------------------
+        stale_track_ids = (
+            set(self._tracks.keys()) - active_track_ids
+        )
 
         for track_id in stale_track_ids:
             del self._tracks[track_id]
 
         return events
+
+    # ------------------------------------------------------------------
+    # State access
+    # ------------------------------------------------------------------
 
     def get_track_state(self, track_id):
         """Return internal direction state for a tracked person."""
@@ -177,6 +247,10 @@ class DirectionModel:
         """Clear all tracked direction states."""
         self._tracks.clear()
         self.frame_count = 0
+
+    # ------------------------------------------------------------------
+    # Direction / cooldown
+    # ------------------------------------------------------------------
 
     def _get_direction(self, previous_side, current_side):
         """
@@ -217,6 +291,10 @@ class DirectionModel:
             >= self.cooldown_frames
         )
 
+    # ------------------------------------------------------------------
+    # Geometry
+    # ------------------------------------------------------------------
+
     def _get_side(self, point):
         """
         Return the point's signed side relative to the line.
@@ -252,3 +330,4 @@ class DirectionModel:
         dy = by - ay
 
         return (dx * dx + dy * dy) ** 0.5
+

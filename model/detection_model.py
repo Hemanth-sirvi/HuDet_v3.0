@@ -1,3 +1,4 @@
+
 from pathlib import Path
 
 from ultralytics import YOLO
@@ -39,6 +40,10 @@ class DetectionModel:
         self.model = None
         self._load_model()
 
+    # ------------------------------------------------------------------
+    # Model loading
+    # ------------------------------------------------------------------
+
     def _load_model(self):
         """Load the YOLOv5u model from the assets directory."""
         if not self.model_path.exists():
@@ -58,11 +63,16 @@ class DetectionModel:
         """Return True when the detection model is loaded."""
         return self.model is not None
 
+    # ------------------------------------------------------------------
+    # Detection
+    # ------------------------------------------------------------------
+
     def detect(self, frame):
         """
         Run person detection on a single OpenCV BGR frame.
 
         Returns a list of dictionaries in the form:
+
             {
                 "bbox": (x1, y1, x2, y2),
                 "confidence": float,
@@ -71,7 +81,9 @@ class DetectionModel:
             }
         """
         if not self.is_loaded:
-            raise RuntimeError("Detection model is not loaded.")
+            raise RuntimeError(
+                "Detection model is not loaded."
+            )
 
         if frame is None:
             return []
@@ -116,9 +128,8 @@ class DetectionModel:
                     .tolist()
                 )
 
-                class_name = self.model.names.get(
-                    class_id,
-                    "person",
+                class_name = self._get_class_name(
+                    class_id
                 )
 
                 detections.append(
@@ -137,20 +148,66 @@ class DetectionModel:
 
         return detections
 
+    # ------------------------------------------------------------------
+    # Class-name handling
+    # ------------------------------------------------------------------
+
+    def _get_class_name(self, class_id):
+        """
+        Safely resolve a class name from the Ultralytics model.
+
+        Ultralytics may expose ``model.names`` as either a dictionary
+        or a list depending on the model/version.
+        """
+        names = getattr(self.model, "names", None)
+
+        if isinstance(names, dict):
+            return str(
+                names.get(
+                    class_id,
+                    "person",
+                )
+            )
+
+        if isinstance(names, (list, tuple)):
+            if 0 <= class_id < len(names):
+                return str(names[class_id])
+
+        return "person"
+
+    # ------------------------------------------------------------------
+    # Runtime configuration
+    # ------------------------------------------------------------------
+
     def set_confidence_threshold(self, threshold):
         """Update the minimum confidence required for detection."""
+        if not isinstance(
+            threshold,
+            (int, float),
+        ):
+            raise TypeError(
+                "Confidence threshold must be a number."
+            )
+
         if not 0.0 <= threshold <= 1.0:
             raise ValueError(
                 "Confidence threshold must be between 0.0 and 1.0."
             )
 
-        self.confidence_threshold = threshold
+        self.confidence_threshold = float(
+            threshold
+        )
 
     def set_image_size(self, image_size):
         """Update the inference image size."""
-        if not isinstance(image_size, int) or image_size <= 0:
+        if (
+            not isinstance(image_size, int)
+            or isinstance(image_size, bool)
+            or image_size <= 0
+        ):
             raise ValueError(
                 "image_size must be a positive integer."
             )
 
         self.image_size = image_size
+
