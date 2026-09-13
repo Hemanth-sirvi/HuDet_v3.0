@@ -6,7 +6,7 @@
         720
     ],
     "detection": {
-        "model_path": null,
+        "model_path": "assets/yolov5mu.pt",
         "confidence_threshold": 0.5,
         "device": null,
         "image_size": 640
@@ -49,5 +49,14 @@
     },
     "safety": {
         "occupancy_safety_threshold": 1
+    },
+    "cameras": {
+        "count": 2,
+        "indices": [
+            0,
+            1
+        ],
+        "width": 1280,
+        "height": 720
     }
 }

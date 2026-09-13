@@ -1,241 +1,241 @@
 {
-  "appearance": {
-    "mode": "light"
-  },
-  "window": {
-    "title": "HUMAN DETECTION & MONITORING",
-    "maximized": true,
-    "fullscreen": false,
-    "header_content_footer_ratio": [
-      1,
-      10,
-      1
-    ]
-  },
-  "colors": {
-    "window_background": "#F2F2F2",
-    "frame_background": "#FFFFFF",
-    "frame_foreground": "#FFFFFF",
-    "text_primary": "#111111",
-    "text_secondary": "#555555",
-    "button": {
-      "foreground": "#1F6AA5",
-      "hover": "#144870",
-      "text": "#FFFFFF",
-      "disabled": "#A0A0A0"
+    "appearance": {
+        "mode": "dark"
     },
-    "camera": {
-      "background": "#111111",
-      "border": "#808080",
-      "counting_line": "#FF0000",
-      "person_box": "#00FF00",
-      "person_text": "#FFFFFF"
+    "window": {
+        "title": "HUMAN DETECTION & MONITORING",
+        "maximized": true,
+        "fullscreen": false,
+        "header_content_footer_ratio": [
+            1,
+            10,
+            1
+        ]
     },
-    "status": {
-      "background": "#FFFFFF",
-      "title_text": "#111111",
-      "value_text": "#111111",
-      "running": "#008000",
-      "stopped": "#808080",
-      "connected": "#008000",
-      "disconnected": "#C00000",
-      "safe": "#008000",
-      "not_safe": "#C00000"
+    "colors": {
+        "window_background": "#F2F2F2",
+        "frame_background": "#FFFFFF",
+        "frame_foreground": "#FFFFFF",
+        "text_primary": "#111111",
+        "text_secondary": "#555555",
+        "button": {
+            "foreground": "#1F6AA5",
+            "hover": "#144870",
+            "text": "#FFFFFF",
+            "disabled": "#A0A0A0"
+        },
+        "camera": {
+            "background": "#111111",
+            "border": "#808080",
+            "counting_line": "#FF0000",
+            "person_box": "#00FF00",
+            "person_text": "#FFFFFF"
+        },
+        "status": {
+            "background": "#FFFFFF",
+            "title_text": "#111111",
+            "value_text": "#111111",
+            "running": "#008000",
+            "stopped": "#808080",
+            "connected": "#008000",
+            "disconnected": "#C00000",
+            "safe": "#008000",
+            "not_safe": "#C00000"
+        },
+        "log": {
+            "background": "#FFFFFF",
+            "text": "#111111"
+        }
     },
-    "log": {
-      "background": "#FFFFFF",
-      "text": "#111111"
-    }
-  },
-  "fonts": {
-    "header_title": {
-      "family": "Arial",
-      "size": 36,
-      "weight": "bold"
+    "fonts": {
+        "header_title": {
+            "family": "Arial",
+            "size": 36,
+            "weight": "bold"
+        },
+        "header_time": {
+            "family": "Arial",
+            "size": 22,
+            "weight": "normal"
+        },
+        "footer_button": {
+            "family": "Arial",
+            "size": 22,
+            "weight": "bold"
+        },
+        "view_title": {
+            "family": "Arial",
+            "size": 24,
+            "weight": "bold"
+        },
+        "section_title": {
+            "family": "Arial",
+            "size": 16,
+            "weight": "bold"
+        },
+        "status_title": {
+            "family": "Arial",
+            "size": 16,
+            "weight": "bold"
+        },
+        "status_value": {
+            "family": "Arial",
+            "size": 20,
+            "weight": "bold"
+        },
+        "normal": {
+            "family": "Arial",
+            "size": 14,
+            "weight": "normal"
+        },
+        "camera_label": {
+            "family": "Arial",
+            "size": 14,
+            "weight": "normal"
+        },
+        "log": {
+            "family": "Consolas",
+            "size": 12,
+            "weight": "normal"
+        }
     },
-    "header_time": {
-      "family": "Arial",
-      "size": 22,
-      "weight": "normal"
+    "dimensions": {
+        "header": {
+            "padding_x": 5,
+            "padding_y": 5,
+            "logo_width": 150,
+            "logo_height": 70
+        },
+        "footer": {
+            "padding_x": 5,
+            "padding_y": 5,
+            "button_height": 40,
+            "button_corner_radius": 10
+        },
+        "content": {
+            "padding_x": 5,
+            "padding_y": 0
+        },
+        "camera": {
+            "outer_padding": 5,
+            "border_width": 0,
+            "corner_radius": 0,
+            "counting_line_width": 3,
+            "counting_line_endpoint_radius": 5,
+            "person_box_width": 2
+        },
+        "status": {
+            "outer_padding_x": 5,
+            "outer_padding_y": 5,
+            "item_padding_x": 5,
+            "item_padding_y": 5
+        },
+        "log": {
+            "padding_x": 5,
+            "padding_y": 5
+        }
     },
-    "footer_button": {
-      "family": "Arial",
-      "size": 22,
-      "weight": "bold"
-    },
-    "view_title": {
-      "family": "Arial",
-      "size": 24,
-      "weight": "bold"
-    },
-    "section_title": {
-      "family": "Arial",
-      "size": 16,
-      "weight": "bold"
-    },
-    "status_title": {
-      "family": "Arial",
-      "size": 16,
-      "weight": "bold"
-    },
-    "status_value": {
-      "family": "Arial",
-      "size": 20,
-      "weight": "bold"
-    },
-    "normal": {
-      "family": "Arial",
-      "size": 14,
-      "weight": "normal"
-    },
-    "camera_label": {
-      "family": "Arial",
-      "size": 14,
-      "weight": "normal"
-    },
-    "log": {
-      "family": "Consolas",
-      "size": 12,
-      "weight": "normal"
-    }
-  },
-  "dimensions": {
     "header": {
-      "padding_x": 5,
-      "padding_y": 5,
-      "logo_width": 150,
-      "logo_height": 70
+        "title": "HUMAN DETECTION & MONITORING",
+        "logo_size": [
+            150,
+            70
+        ],
+        "title_alignment": "center",
+        "time_alignment": "right"
     },
     "footer": {
-      "padding_x": 5,
-      "padding_y": 5,
-      "button_height": 40,
-      "button_corner_radius": 10
+        "buttons": {
+            "AUTO": {
+                "text": "AUTO",
+                "visible": true,
+                "enabled": true
+            },
+            "TEACH": {
+                "text": "TEACH",
+                "visible": true,
+                "enabled": true
+            },
+            "SYSTEM": {
+                "text": "SYSTEM",
+                "visible": true,
+                "enabled": true
+            },
+            "EXIT": {
+                "text": "EXIT",
+                "visible": true,
+                "enabled": true
+            },
+            "START": {
+                "text": "START",
+                "stop_text": "STOP",
+                "visible": true,
+                "enabled": true
+            }
+        }
     },
-    "content": {
-      "padding_x": 5,
-      "padding_y": 0
-    },
-    "camera": {
-      "outer_padding": 5,
-      "border_width": 0,
-      "corner_radius": 0,
-      "counting_line_width": 3,
-      "counting_line_endpoint_radius": 5,
-      "person_box_width": 2
-    },
-    "status": {
-      "outer_padding_x": 5,
-      "outer_padding_y": 5,
-      "item_padding_x": 5,
-      "item_padding_y": 5
-    },
-    "log": {
-      "padding_x": 5,
-      "padding_y": 5
-    }
-  },
-  "header": {
-    "title": "HUMAN DETECTION & MONITORING",
-    "logo_size": [
-      150,
-      70
-    ],
-    "title_alignment": "center",
-    "time_alignment": "right"
-  },
-  "footer": {
-    "buttons": {
-      "AUTO": {
-        "text": "AUTO",
-        "visible": true,
-        "enabled": true
-      },
-      "TEACH": {
-        "text": "TEACH",
-        "visible": true,
-        "enabled": true
-      },
-      "SYSTEM": {
-        "text": "SYSTEM",
-        "visible": true,
-        "enabled": true
-      },
-      "EXIT": {
-        "text": "EXIT",
-        "visible": true,
-        "enabled": true
-      },
-      "START": {
-        "text": "START",
-        "stop_text": "STOP",
-        "visible": true,
-        "enabled": true
-      }
-    }
-  },
-  "auto_view": {
-    "camera_area_ratio": 9,
-    "status_area_ratio": 1,
-    "camera_grid_gap": 5,
-    "camera_label": {
-      "show_camera_name": true,
-      "name_template": "Camera {index}"
-    },
-    "person_overlay": {
-      "show": true,
-      "show_track_id": true,
-      "show_confidence": true,
-      "confidence_decimals": 0,
-      "label_template": "Person {track_id} {confidence}%"
-    },
-    "counting_line_overlay": {
-      "show": true,
-      "show_endpoints": true
-    },
-    "status": {
-      "monitoring_label": "MONITORING",
-      "plc_label": "PLC",
-      "entered_label": "ENTERED",
-      "exited_label": "EXITED",
-      "current_people_label": "CURRENT PEOPLE",
-      "eqp_status_label": "EQP STATUS",
-      "running_text": "RUNNING",
-      "stopped_text": "STOPPED",
-      "connected_text": "CONNECTED",
-      "disconnected_text": "DISCONNECTED",
-      "safe_text": "SAFE",
-      "not_safe_text": "NOT SAFE"
-    },
-    "log": {
-      "font": "log",
-      "show_scrollbar": true,
-      "start_at_bottom": true
-    }
-  },
-  "teach_view": {
-    "control_area_ratio": 1,
-    "preview_area_ratio": 3,
-    "title": "TEACH",
-    "camera_selector_title": "SELECT CAMERA",
-    "direction_title": "ENTER DIRECTION",
-    "instruction": "Click and drag on the camera image to draw the counting line.",
-    "clear_button_text": "CLEAR LINE",
-    "save_button_text": "SAVE",
-    "status_no_line": "No counting line set.",
-    "status_save_success_template": "Camera {index} configuration saved.",
-    "status_save_missing_line": "Draw a counting line before saving.",
-    "show_counting_line_endpoints": true,
-    "line_width": 5
-  },
-  "interaction": {
     "auto_view": {
-      "camera_double_click_expand": true,
-      "camera_double_click_restore": true
+        "camera_area_ratio": 9,
+        "status_area_ratio": 1,
+        "camera_grid_gap": 5,
+        "camera_label": {
+            "show_camera_name": true,
+            "name_template": "Camera {index}"
+        },
+        "person_overlay": {
+            "show": true,
+            "show_track_id": true,
+            "show_confidence": true,
+            "confidence_decimals": 0,
+            "label_template": "Person {track_id} {confidence}%"
+        },
+        "counting_line_overlay": {
+            "show": true,
+            "show_endpoints": true
+        },
+        "status": {
+            "monitoring_label": "MONITORING",
+            "plc_label": "PLC",
+            "entered_label": "ENTERED",
+            "exited_label": "EXITED",
+            "current_people_label": "CURRENT PEOPLE",
+            "eqp_status_label": "EQP STATUS",
+            "running_text": "RUNNING",
+            "stopped_text": "STOPPED",
+            "connected_text": "CONNECTED",
+            "disconnected_text": "DISCONNECTED",
+            "safe_text": "SAFE",
+            "not_safe_text": "NOT SAFE"
+        },
+        "log": {
+            "font": "log",
+            "show_scrollbar": true,
+            "start_at_bottom": true
+        }
     },
     "teach_view": {
-      "line_draw_button": "left"
-    }
-  },
-  "version": 0
+        "control_area_ratio": 1,
+        "preview_area_ratio": 3,
+        "title": "TEACH",
+        "camera_selector_title": "SELECT CAMERA",
+        "direction_title": "ENTER DIRECTION",
+        "instruction": "Click and drag on the camera image to draw the counting line.",
+        "clear_button_text": "CLEAR LINE",
+        "save_button_text": "SAVE",
+        "status_no_line": "No counting line set.",
+        "status_save_success_template": "Camera {index} configuration saved.",
+        "status_save_missing_line": "Draw a counting line before saving.",
+        "show_counting_line_endpoints": true,
+        "line_width": 5
+    },
+    "interaction": {
+        "auto_view": {
+            "camera_double_click_expand": true,
+            "camera_double_click_restore": true
+        },
+        "teach_view": {
+            "line_draw_button": "left"
+        }
+    },
+    "version": 0
 }
