@@ -9,68 +9,68 @@
         "header_content_footer_ratio": [
             1,
             10,
-            1
+            2
         ]
     },
     "colors": {
-        "window_background": "#F2F2F2",
-        "frame_background": "#FFFFFF",
-        "frame_foreground": "#FFFFFF",
-        "text_primary": "#111111",
-        "text_secondary": "#555555",
+        "window_background": "#111111",
+        "frame_background": "#1B1B1B",
+        "frame_foreground": "#252525",
+        "text_primary": "#F2F2F2",
+        "text_secondary": "#B8B8B8",
         "button": {
-            "foreground": "#1F6AA5",
-            "hover": "#144870",
+            "foreground": "#2D6A4F",
+            "hover": "#40916C",
             "text": "#FFFFFF",
-            "disabled": "#A0A0A0"
+            "disabled": "#555555"
         },
         "camera": {
-            "background": "#111111",
-            "border": "#808080",
-            "counting_line": "#FF0000",
-            "person_box": "#00FF00",
+            "background": "#080808",
+            "border": "#4A4A4A",
+            "counting_line": "#FFD000",
+            "person_box": "#00E676",
             "person_text": "#FFFFFF"
         },
         "status": {
-            "background": "#FFFFFF",
-            "title_text": "#111111",
-            "value_text": "#111111",
+            "background": "#202020",
+            "title_text": "#D0D0D0",
+            "value_text": "#FFFFFF",
             "items": {
                 "monitoring": {
-                    "background": "#FFFFFF",
-                    "text": "#111111"
+                    "background": "#242424",
+                    "text": "#FFFFFF"
                 },
                 "plc": {
-                    "background": "#FFFFFF",
-                    "text": "#111111"
+                    "background": "#242424",
+                    "text": "#FFFFFF"
                 },
                 "entered": {
-                    "background": "#FFFFFF",
-                    "text": "#111111"
+                    "background": "#242424",
+                    "text": "#FFFFFF"
                 },
                 "exited": {
-                    "background": "#FFFFFF",
-                    "text": "#111111"
+                    "background": "#242424",
+                    "text": "#FFFFFF"
                 },
                 "current_people": {
-                    "background": "#FFFFFF",
-                    "text": "#111111"
+                    "background": "#242424",
+                    "text": "#FFFFFF"
                 },
                 "eqp_status": {
-                    "background": "#FFFFFF",
-                    "text": "#111111"
+                    "background": "#242424",
+                    "text": "#FFFFFF"
                 }
             },
-            "running": "#008000",
-            "stopped": "#808080",
-            "connected": "#008000",
-            "disconnected": "#C00000",
-            "safe": "#008000",
-            "not_safe": "#C00000"
+            "running": "#00E676",
+            "stopped": "#9E9E9E",
+            "connected": "#00E676",
+            "disconnected": "#FF5252",
+            "safe": "#00E676",
+            "not_safe": "#FF5252"
         },
         "log": {
-            "background": "#FFFFFF",
-            "text": "#111111"
+            "background": "#0D0D0D",
+            "text": "#D6D6D6"
         }
     },
     "fonts": {
@@ -144,8 +144,8 @@
         },
         "camera": {
             "outer_padding": 5,
-            "border_width": 0,
-            "corner_radius": 0,
+            "border_width": 1,
+            "corner_radius": 4,
             "counting_line_width": 3,
             "counting_line_endpoint_radius": 5,
             "person_box_width": 2
@@ -263,5 +263,5 @@
             "line_draw_button": "left"
         }
     },
-    "version": 0
+    "version": 1
 }

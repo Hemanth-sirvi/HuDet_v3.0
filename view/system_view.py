@@ -1,9 +1,7 @@
 import tkinter as tk
-from tkinter import colorchooser, filedialog, messagebox
+from tkinter import colorchooser, filedialog
 import json
 import customtkinter as ctk
-
-from model.theme_manager import ThemeManager
 
 
 class SystemView(ctk.CTkFrame):
@@ -48,7 +46,9 @@ class SystemView(ctk.CTkFrame):
         self.plc_encoding_var = ctk.StringVar(value="utf-8")
 
         self._build_layout()
+        self._build_all_section_frames()
         self._show_section("GENERAL")
+        self._apply_theme_to_view()
 
     # ------------------------------------------------------------------
     # Main layout
@@ -73,6 +73,9 @@ class SystemView(ctk.CTkFrame):
         )
 
         self.navigation_frame.grid_columnconfigure(0, weight=1)
+        # The System View shell must keep the size allocated by MainView.
+        # Child widgets must not resize this container during section/theme builds.
+        self.navigation_frame.grid_propagate(False)
 
         title = ctk.CTkLabel(
             self.navigation_frame,
@@ -132,6 +135,7 @@ class SystemView(ctk.CTkFrame):
 
         self.workspace_frame.grid_rowconfigure(1, weight=1)
         self.workspace_frame.grid_columnconfigure(0, weight=1)
+        self.workspace_frame.grid_propagate(False)
 
         self.section_title = ctk.CTkLabel(
             self.workspace_frame,
@@ -157,6 +161,10 @@ class SystemView(ctk.CTkFrame):
 
         self.settings_frame.grid_columnconfigure(0, weight=1)
         self.settings_frame.grid_rowconfigure(0, weight=1)
+        # Keep the workspace cell fixed; section contents (especially the
+        # recursive Theme editor) must scroll/fit inside it instead of
+        # changing the System View's requested size.
+        self.settings_frame.grid_propagate(False)
 
         # --------------------------------------------------------------
         # Action bar
@@ -252,31 +260,6 @@ class SystemView(ctk.CTkFrame):
             pady=10,
         )
 
-        self.import_theme_button = ctk.CTkButton(
-            self.action_frame,
-            text="IMPORT THEME",
-            command=self._import_theme,
-            width=130,
-        )
-        self.import_theme_button.grid(
-            row=0,
-            column=6,
-            padx=5,
-            pady=10,
-        )
-
-        self.export_theme_button = ctk.CTkButton(
-            self.action_frame,
-            text="EXPORT THEME",
-            command=self._export_theme,
-            width=130,
-        )
-        self.export_theme_button.grid(
-            row=0,
-            column=7,
-            padx=(5, 10),
-            pady=10,
-        )
 
     # ------------------------------------------------------------------
     # Section navigation
@@ -294,13 +277,15 @@ class SystemView(ctk.CTkFrame):
         self.current_section = section_name
         self.section_title.configure(text=section_name)
 
+        colors = self._theme_colors()
+        button_fg = colors["button_foreground"]
+        button_hover = colors["button_hover"]
+
         for name, button in self.navigation_buttons.items():
             if name == section_name:
-                button.configure(fg_color=button.cget("hover_color"))
+                button.configure(fg_color=button_hover, hover_color=button_hover)
             else:
-                button.configure(
-                    fg_color=ctk.ThemeManager.theme["CTkButton"]["fg_color"]
-                )
+                button.configure(fg_color=button_fg, hover_color=button_hover)
 
         self._show_section_frame(section_name)
 
@@ -311,7 +296,10 @@ class SystemView(ctk.CTkFrame):
             frame.grid_remove()
 
     def _show_section_frame(self, section_name):
-        frame = self._get_or_build_section_frame(section_name)
+        """Show an already-built section without creating widgets on demand."""
+        frame = self.section_frames.get(section_name)
+        if frame is None:
+            return
 
         for name, section_frame in self.section_frames.items():
             if name == section_name:
@@ -319,42 +307,82 @@ class SystemView(ctk.CTkFrame):
             else:
                 section_frame.grid_remove()
 
-    def _get_or_build_section_frame(self, section_name):
-        if section_name in self.section_frames:
-            return self.section_frames[section_name]
-
-        frame = ctk.CTkFrame(self.settings_frame)
-        frame.grid(
-            row=0,
-            column=0,
-            sticky="nsew",
-        )
-        frame.grid_columnconfigure(0, weight=1)
-        frame.grid_rowconfigure(0, weight=1)
-
-        self.section_frames[section_name] = frame
+    def _build_all_section_frames(self):
+        """Build every section once so navigation never triggers visible re-layout."""
+        builders = {
+            "GENERAL": self._build_general_section,
+            "CAMERAS": self._build_cameras_section,
+            "DETECTION": self._build_detection_section,
+            "PLC": self._build_plc_section,
+            "THEME": self._build_theme_section,
+        }
 
         original_settings_frame = self.settings_frame
-        self.settings_frame = frame
 
-        try:
-            builders = {
-                "GENERAL": self._build_general_section,
-                "CAMERAS": self._build_cameras_section,
-                "DETECTION": self._build_detection_section,
-                "PLC": self._build_plc_section,
-                "THEME": self._build_theme_section,
-            }
+        for section_name, builder in builders.items():
+            frame = ctk.CTkFrame(original_settings_frame)
+            frame.grid(
+                row=0,
+                column=0,
+                sticky="nsew",
+            )
+            frame.grid_columnconfigure(0, weight=1)
+            frame.grid_rowconfigure(0, weight=1)
+            # Each section occupies the fixed settings area allocated by the
+            # parent. Its children must not change that area's geometry.
+            frame.grid_propagate(False)
 
-            builder = builders.get(section_name)
-            if builder is not None:
+            # Keep all frames hidden while they are being populated. This is
+            # important for the Theme section, which contains many widgets.
+            frame.grid_remove()
+            self.section_frames[section_name] = frame
+
+            self.settings_frame = frame
+            try:
                 builder()
+            finally:
+                self.settings_frame = original_settings_frame
+
+            self._apply_theme_to_widgets(frame)
+
+    def _get_or_build_section_frame(self, section_name):
+        """Compatibility helper; sections are normally pre-built."""
+        frame = self.section_frames.get(section_name)
+        if frame is not None:
+            return frame
+
+        # Fallback for any external code that requests an unknown section.
+        builders = {
+            "GENERAL": self._build_general_section,
+            "CAMERAS": self._build_cameras_section,
+            "DETECTION": self._build_detection_section,
+            "PLC": self._build_plc_section,
+            "THEME": self._build_theme_section,
+        }
+        builder = builders.get(section_name)
+        if builder is None:
+            return None
+
+        original_settings_frame = self.settings_frame
+        frame = ctk.CTkFrame(original_settings_frame)
+        frame.grid(row=0, column=0, sticky="nsew")
+        frame.grid_columnconfigure(0, weight=1)
+        frame.grid_rowconfigure(0, weight=1)
+        frame.grid_propagate(False)
+        frame.grid_remove()
+        self.section_frames[section_name] = frame
+
+        self.settings_frame = frame
+        try:
+            builder()
         finally:
             self.settings_frame = original_settings_frame
 
+        self._apply_theme_to_widgets(frame)
         return frame
 
     def _refresh_current_section(self):
+        """Rebuild the active section while it is hidden to prevent visual flicker."""
         if not self.current_section:
             return
 
@@ -362,29 +390,37 @@ class SystemView(ctk.CTkFrame):
         if frame is None:
             return
 
+        was_visible = bool(frame.winfo_ismapped())
+        frame.grid_remove()
+
         for widget in frame.winfo_children():
             widget.destroy()
 
         frame.grid_columnconfigure(0, weight=1)
         frame.grid_rowconfigure(0, weight=1)
 
+        builders = {
+            "GENERAL": self._build_general_section,
+            "CAMERAS": self._build_cameras_section,
+            "DETECTION": self._build_detection_section,
+            "PLC": self._build_plc_section,
+            "THEME": self._build_theme_section,
+        }
+        builder = builders.get(self.current_section)
+
         original_settings_frame = self.settings_frame
         self.settings_frame = frame
-
         try:
-            builders = {
-                "GENERAL": self._build_general_section,
-                "CAMERAS": self._build_cameras_section,
-                "DETECTION": self._build_detection_section,
-                "PLC": self._build_plc_section,
-                "THEME": self._build_theme_section,
-            }
-
-            builder = builders.get(self.current_section)
             if builder is not None:
                 builder()
         finally:
             self.settings_frame = original_settings_frame
+
+        self._apply_theme_to_widgets(frame)
+        self._apply_theme_to_view()
+
+        if was_visible:
+            frame.grid()
 
     # ------------------------------------------------------------------
     # Settings sections
@@ -961,13 +997,11 @@ class SystemView(ctk.CTkFrame):
 
         self._render_theme_dict(scroll_frame, theme)
 
-        self.restore_default_theme_button = ctk.CTkButton(
+        theme_action_frame = ctk.CTkFrame(
             self.settings_frame,
-            text="RESTORE DEFAULT THEME",
-            command=self._restore_default_theme,
-            width=220,
+            fg_color="transparent",
         )
-        self.restore_default_theme_button.grid(
+        theme_action_frame.grid(
             row=1,
             column=0,
             padx=20,
@@ -975,13 +1009,54 @@ class SystemView(ctk.CTkFrame):
             sticky="w",
         )
 
+        self.restore_default_theme_button = ctk.CTkButton(
+            theme_action_frame,
+            text="RESTORE DEFAULT",
+            command=self._restore_default_theme,
+            width=160,
+        )
+        self.restore_default_theme_button.grid(
+            row=0,
+            column=0,
+            padx=(0, 8),
+            pady=0,
+        )
+
+        self.import_theme_button = ctk.CTkButton(
+            theme_action_frame,
+            text="IMPORT THEME",
+            command=self._import_theme,
+            width=140,
+        )
+        self.import_theme_button.grid(
+            row=0,
+            column=1,
+            padx=8,
+            pady=0,
+        )
+
+        self.export_theme_button = ctk.CTkButton(
+            theme_action_frame,
+            text="EXPORT THEME",
+            command=self._export_theme,
+            width=140,
+        )
+        self.export_theme_button.grid(
+            row=0,
+            column=2,
+            padx=(8, 0),
+            pady=0,
+        )
+
         hint = ctk.CTkLabel(
             self.settings_frame,
             text=(
                 "Edit the visual properties used by the application. "
                 "PREVIEW opens a temporary sample window using the current "
-                "values without saving them. RESTORE DEFAULT THEME resets "
-                "the working theme only. APPLY saves the edited theme."
+                "values without saving them. RESTORE DEFAULT resets the "
+                "working theme, IMPORT loads a theme for review, and "
+                "EXPORT saves the current working theme. APPLY saves the "
+                "edited theme."
             ),
             justify="left",
             wraplength=750,
@@ -993,17 +1068,6 @@ class SystemView(ctk.CTkFrame):
             pady=(0, 15),
             sticky="w",
         )
-
-    def _get_theme(self):
-        if self.vm is None:
-            return {}
-
-        get_theme = getattr(self.vm, "get_theme", None)
-        if not callable(get_theme):
-            return {}
-
-        theme = get_theme()
-        return theme if isinstance(theme, dict) else {}
 
     def _restore_default_theme(self):
         """Reset the working theme to ThemeManager's canonical defaults."""
@@ -1017,7 +1081,7 @@ class SystemView(ctk.CTkFrame):
                 (
                     "Restore all theme settings to their default values?\n\n"
                     "This will replace the current unsaved theme edits. "
-                    "You must press APPLY to save the restored theme."
+                    "Press APPLY to save the restored theme."
                 ),
                 parent=self.winfo_toplevel(),
             )
@@ -1032,6 +1096,17 @@ class SystemView(ctk.CTkFrame):
             text="Default theme restored. Review, PREVIEW, then APPLY."
         )
         self._refresh_current_section()
+
+    def _get_theme(self):
+        if self.vm is None:
+            return {}
+
+        get_theme = getattr(self.vm, "get_theme", None)
+        if not callable(get_theme):
+            return {}
+
+        theme = get_theme()
+        return theme if isinstance(theme, dict) else {}
 
     def _render_theme_dict(self, parent, data, path=(), start_row=0):
         row = start_row
@@ -2066,6 +2141,7 @@ class SystemView(ctk.CTkFrame):
 
             apply_method()
             self.status_label.configure(text="Changes applied.")
+            self._apply_theme_to_view()
         except Exception as exc:
             self.status_label.configure(text=f"Apply failed: {exc}")
 
@@ -2085,6 +2161,141 @@ class SystemView(ctk.CTkFrame):
 
         except Exception as exc:
             self.status_label.configure(text=f"Cancel failed: {exc}")
+
+
+    # ------------------------------------------------------------------
+    # Theme application
+    # ------------------------------------------------------------------
+    def _theme_colors(self):
+        theme = self._get_theme()
+        colors = theme.get("colors", {}) if isinstance(theme, dict) else {}
+        button = colors.get("button", {})
+        return {
+            "window_background": colors.get("window_background", "#202020"),
+            "frame_background": colors.get("frame_background", "#2B2B2B"),
+            "frame_foreground": colors.get("frame_foreground", "#333333"),
+            "text_primary": colors.get("text_primary", "#FFFFFF"),
+            "text_secondary": colors.get("text_secondary", "#B0B0B0"),
+            "button_foreground": button.get("foreground", colors.get("button_foreground", "#1F6AA5")),
+            "button_hover": button.get("hover", colors.get("button_hover", "#144870")),
+            "button_text": button.get("text", colors.get("button_text", "#FFFFFF")),
+            "button_disabled": button.get("disabled", colors.get("button_disabled", "#555555")),
+        }
+
+    def _theme_fonts(self):
+        theme = self._get_theme()
+        fonts = theme.get("fonts", {}) if isinstance(theme, dict) else {}
+        return {
+            "normal": fonts.get("normal", {"family": "Arial", "size": 14}),
+            "section_title": fonts.get("section_title", {"family": "Arial", "size": 18, "weight": "bold"}),
+            "view_title": fonts.get("view_title", {"family": "Arial", "size": 22, "weight": "bold"}),
+        }
+
+    @staticmethod
+    def _ctk_font(spec, fallback_size=14, fallback_weight="normal"):
+        if not isinstance(spec, dict):
+            return ctk.CTkFont(size=fallback_size, weight=fallback_weight)
+        kwargs = {
+            "size": spec.get("size", fallback_size),
+            "weight": spec.get("weight", fallback_weight),
+        }
+        if spec.get("family"):
+            kwargs["family"] = spec["family"]
+        if spec.get("slant"):
+            kwargs["slant"] = spec["slant"]
+        return ctk.CTkFont(**kwargs)
+
+    def _apply_theme_to_view(self):
+        """Apply the configured theme to SystemView without changing its layout."""
+        if not hasattr(self, "navigation_frame"):
+            return
+
+        self._apply_theme_to_widgets(self)
+
+        colors = self._theme_colors()
+        fonts = self._theme_fonts()
+
+        self.section_title.configure(
+            text_color=colors["text_primary"],
+            font=self._ctk_font(fonts["view_title"], 22, "bold"),
+        )
+        self.status_label.configure(text_color=colors["text_secondary"])
+
+        for name, button in self.navigation_buttons.items():
+            button.configure(
+                text_color=colors["button_text"],
+                fg_color=colors["button_hover"] if name == self.current_section else colors["button_foreground"],
+                hover_color=colors["button_hover"],
+            )
+
+        # Color picker/theme editor widgets may be nested several levels down.
+        for widget in self.theme_widgets.values():
+            if widget.winfo_exists():
+                self._apply_theme_to_widgets(widget)
+
+    def _apply_theme_to_widgets(self, parent):
+        colors = self._theme_colors()
+        fonts = self._theme_fonts()
+
+        if isinstance(parent, (ctk.CTkFrame, ctk.CTkScrollableFrame)):
+            try:
+                current_fg = parent.cget("fg_color")
+                if current_fg != "transparent":
+                    parent.configure(fg_color=colors["frame_background"])
+            except Exception:
+                pass
+
+        for widget in parent.winfo_children():
+            if isinstance(widget, ctk.CTkFrame):
+                try:
+                    if widget.cget("fg_color") != "transparent":
+                        widget.configure(fg_color=colors["frame_background"])
+                except Exception:
+                    pass
+            elif isinstance(widget, ctk.CTkLabel):
+                try:
+                    widget.configure(text_color=colors["text_primary"])
+                except Exception:
+                    pass
+            elif isinstance(widget, ctk.CTkButton):
+                try:
+                    widget.configure(
+                        fg_color=colors["button_foreground"],
+                        hover_color=colors["button_hover"],
+                        text_color=colors["button_text"],
+                    )
+                except Exception:
+                    pass
+            elif isinstance(widget, ctk.CTkEntry):
+                try:
+                    widget.configure(
+                        fg_color=colors["frame_foreground"],
+                        text_color=colors["text_primary"],
+                    )
+                except Exception:
+                    pass
+            elif isinstance(widget, ctk.CTkOptionMenu):
+                try:
+                    widget.configure(
+                        fg_color=colors["button_foreground"],
+                        button_color=colors["button_foreground"],
+                        button_hover_color=colors["button_hover"],
+                        text_color=colors["button_text"],
+                    )
+                except Exception:
+                    pass
+            elif isinstance(widget, ctk.CTkCheckBox):
+                try:
+                    widget.configure(
+                        fg_color=colors["button_foreground"],
+                        hover_color=colors["button_hover"],
+                        text_color=colors["text_primary"],
+                    )
+                except Exception:
+                    pass
+
+            if widget.winfo_children():
+                self._apply_theme_to_widgets(widget)
 
     # ------------------------------------------------------------------
     # ViewModel
@@ -2121,3 +2332,5 @@ class SystemView(ctk.CTkFrame):
         elif self.current_section == "PLC":
             self._clear_settings_frame()
             self._build_plc_section()
+
+        self._apply_theme_to_view()
