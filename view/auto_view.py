@@ -72,17 +72,41 @@ class AutoView(ctk.CTkFrame):
 
         self.statusFrame.grid_columnconfigure(0, weight=1)
 
-        self.monitoring_value = self._create_status_item(0,"MONITORING","STOPPED",)
+        self.monitoring_value = self._create_status_item(
+            0,
+            "MONITORING",
+            "STOPPED",
+        )
 
-        self.plc_value = self._create_status_item(1,"PLC","DISCONNECTED",)
+        self.plc_value = self._create_status_item(
+            1,
+            "PLC",
+            "DISCONNECTED",
+        )
 
-        self.entered_value = self._create_status_item(2,"ENTERED","0",)
+        self.entered_value = self._create_status_item(
+            2,
+            "ENTERED",
+            "0",
+        )
 
-        self.exited_value = self._create_status_item(3,"EXITED","0",)
+        self.exited_value = self._create_status_item(
+            3,
+            "EXITED",
+            "0",
+        )
 
-        self.current_value = self._create_status_item(4,"CURRENT PEOPLE","0",)
+        self.current_value = self._create_status_item(
+            4,
+            "CURRENT PEOPLE",
+            "0",
+        )
 
-        self.safety_value = self._create_status_item(5,"EQP STATUS","NOT SAFE",)
+        self.safety_value = self._create_status_item(
+            5,
+            "EQP STATUS",
+            "NOT SAFE",
+        )
 
         # ---------------------------------------------------------
         # Log area
@@ -90,13 +114,25 @@ class AutoView(ctk.CTkFrame):
         self.statusFrame.grid_rowconfigure(6, weight=1)
 
         self.logFrame = ctk.CTkFrame(self.statusFrame)
-        self.logFrame.grid(row=6,column=0,padx=5,pady=5,sticky="nsew",)
+        self.logFrame.grid(
+            row=6,
+            column=0,
+            padx=5,
+            pady=5,
+            sticky="nsew",
+        )
 
         self.logFrame.grid_rowconfigure(0, weight=1)
         self.logFrame.grid_columnconfigure(0, weight=1)
 
         self.log_text = ctk.CTkTextbox(self.logFrame)
-        self.log_text.grid(row=0,column=0,padx=5,pady=5,sticky="nsew",)
+        self.log_text.grid(
+            row=0,
+            column=0,
+            padx=5,
+            pady=5,
+            sticky="nsew",
+        )
 
         # Connect the ViewModel callbacks when one is supplied.
         self._connect_viewmodel()
@@ -139,11 +175,6 @@ class AutoView(ctk.CTkFrame):
         if hasattr(self.vm, "set_error_callback"):
             self.vm.set_error_callback(
                 self._on_error
-            )
-
-        if hasattr(self.vm, "set_plc_connection_callback"):
-            self.vm.set_plc_connection_callback(
-                self._on_plc_connection_change
             )
 
     # -------------------------------------------------------------
@@ -227,17 +258,90 @@ class AutoView(ctk.CTkFrame):
         if not 0 <= camera_index < len(self.camera_labels):
             return
 
-        self._display_frame(camera_index, frame)
+        self._display_frame(
+            camera_index,
+            frame,
+            tracked_detections,
+        )
 
         self._refresh_status()
 
-    def _display_frame(self, camera_index, frame):
+    def _display_frame(
+        self,
+        camera_index,
+        frame,
+        tracked_detections=None,
+    ):
         if frame is None:
             return
 
         try:
+            display_frame = frame.copy()
+
+            if tracked_detections:
+                for track in tracked_detections:
+                    bbox = track.get("bbox")
+                    track_id = track.get("track_id", "?")
+                    confidence = track.get("confidence", 0.0)
+
+                    if bbox is None or len(bbox) != 4:
+                        continue
+
+                    x1, y1, x2, y2 = map(int, bbox)
+
+                    cv2.rectangle(
+                        display_frame,
+                        (x1, y1),
+                        (x2, y2),
+                        (0, 255, 0),
+                        2,
+                    )
+
+                    label = f"Person {track_id} {confidence:.0%}"
+                    label_y = max(20, y1 - 8)
+
+                    cv2.putText(
+                        display_frame,
+                        label,
+                        (x1, label_y),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.55,
+                        (0, 255, 0),
+                        2,
+                        cv2.LINE_AA,
+                    )
+
+            counting_line = self._get_counting_line(camera_index)
+
+            if counting_line is not None:
+                line_start, line_end = counting_line
+
+                cv2.line(
+                    display_frame,
+                    tuple(map(int, line_start)),
+                    tuple(map(int, line_end)),
+                    (0, 0, 255),
+                    3,
+                )
+
+                cv2.circle(
+                    display_frame,
+                    tuple(map(int, line_start)),
+                    5,
+                    (0, 0, 255),
+                    -1,
+                )
+
+                cv2.circle(
+                    display_frame,
+                    tuple(map(int, line_end)),
+                    5,
+                    (0, 0, 255),
+                    -1,
+                )
+
             rgb_frame = cv2.cvtColor(
-                frame,
+                display_frame,
                 cv2.COLOR_BGR2RGB,
             )
 
@@ -256,33 +360,19 @@ class AutoView(ctk.CTkFrame):
 
             if image_ratio > frame_ratio:
                 display_width = width - 10
-                display_height = max(
-                    1,
-                    int(display_width / image_ratio),
-                )
+                display_height = max(1, int(display_width / image_ratio))
             else:
                 display_height = height - 10
-                display_width = max(
-                    1,
-                    int(display_height * image_ratio),
-                )
+                display_width = max(1, int(display_height * image_ratio))
 
             display_image = ctk.CTkImage(
                 light_image=image,
                 dark_image=image,
-                size=(
-                    display_width,
-                    display_height,
-                ),
+                size=(display_width, display_height),
             )
 
             label = self.camera_labels[camera_index]
-            label.configure(
-                image=display_image,
-                text="",
-            )
-
-            # Keep a reference so Tkinter does not garbage-collect it.
+            label.configure(image=display_image, text="")
             self.camera_images[camera_index] = display_image
 
         except Exception as exc:
@@ -290,6 +380,31 @@ class AutoView(ctk.CTkFrame):
                 camera_index,
                 f"Frame display error: {exc}",
             )
+
+    def _get_counting_line(self, camera_index):
+        if self.vm is None:
+            return None
+
+        direction_models = getattr(
+            self.vm,
+            "direction_models",
+            None,
+        )
+
+        if not isinstance(direction_models, list):
+            return None
+
+        if not 0 <= camera_index < len(direction_models):
+            return None
+
+        direction_model = direction_models[camera_index]
+        line_start = getattr(direction_model, "line_start", None)
+        line_end = getattr(direction_model, "line_end", None)
+
+        if line_start is None or line_end is None:
+            return None
+
+        return line_start, line_end
 
     # -------------------------------------------------------------
     # Monitoring
@@ -406,36 +521,11 @@ class AutoView(ctk.CTkFrame):
                 text=str(counts["current"])
             )
 
-            self._refresh_plc_status()
-
         except Exception as exc:
             self._on_error(
                 -1,
                 f"Status update error: {exc}",
             )
-
-    def _refresh_plc_status(self):
-        """
-        Pull PLC connection/safety state from AutoViewModel, when it
-        exposes get_plc_status(). Falls back to the original static
-        labels if the ViewModel does not support PLC status (e.g. an
-        older or test ViewModel), so this stays backwards compatible.
-        """
-        get_plc_status = getattr(self.vm, "get_plc_status", None)
-
-        if not callable(get_plc_status):
-            return
-
-        plc_status = get_plc_status()
-
-        self.plc_value.configure(
-            text="CONNECTED" if plc_status.get("connected") else "DISCONNECTED"
-        )
-
-        safety = plc_status.get("safety", "NOT_SAFE")
-        safety_display = "SAFE" if safety == "SAFE" else "NOT SAFE"
-
-        self.safety_value.configure(text=safety_display)
 
     # -------------------------------------------------------------
     # Events and logging
@@ -456,12 +546,6 @@ class AutoView(ctk.CTkFrame):
             f"Current: {counts.get('current', 0)}"
         )
 
-        self._refresh_status()
-
-    def _on_plc_connection_change(self, is_connected):
-        self._append_log(
-            "PLC connected." if is_connected else "PLC disconnected."
-        )
         self._refresh_status()
 
     def _on_error(self, camera_index, message):

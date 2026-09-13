@@ -5,8 +5,11 @@ from datetime import datetime
 
 from view.auto_view import AutoView
 from view.teach_view import TeachView
+from view.system_view import SystemView
+
 from viewmodel.auto_viewmodel import AutoViewModel
 from viewmodel.teach_viewmodel import TeachViewModel
+from viewmodel.system_viewmodel import SystemViewModel
 
 
 def get_logo_path() -> pathlib.Path:
@@ -29,12 +32,12 @@ class MainView(ctk.CTk):
             else AutoViewModel()
         )
 
-        # Teach View uses the same AutoViewModel so that a taught
-        # counting line is applied to the corresponding DirectionModel.
         self.teach_viewmodel = TeachViewModel(
             camera_count=self.auto_viewmodel.camera_count,
             auto_viewmodel=self.auto_viewmodel,
         )
+
+        self.system_viewmodel = SystemViewModel()
 
         self.width = self.winfo_screenwidth()
         self.height = self.winfo_screenheight()
@@ -188,6 +191,7 @@ class MainView(ctk.CTk):
         self.system_button = FooterButton(
             self.footer,
             text="SYSTEM",
+            command=self._show_system_view,
         )
         self.system_button.grid(
             row=0,
@@ -258,14 +262,22 @@ class MainView(ctk.CTk):
             camera_count=self.auto_viewmodel.camera_count,
         )
 
+        self.system_view = SystemView(
+            self.content,
+            viewmodel=self.system_viewmodel,
+        )
+
         self._show_auto_view()
 
     # -------------------------------------------------------------
     # View switching
     # -------------------------------------------------------------
+    def _hide_current_view(self):
+        if self.currentContent is not None:
+            self.currentContent.grid_forget()
+
     def _show_auto_view(self):
-        if self.currentContent is self.teach_view:
-            self.teach_view.grid_forget()
+        self._hide_current_view()
 
         self.currentContent = self.auto_view
         self.currentContent.grid(
@@ -282,8 +294,7 @@ class MainView(ctk.CTk):
             self.auto_view.stop_monitoring()
             self.start_button.configure(text="START")
 
-        if self.currentContent is self.auto_view:
-            self.auto_view.grid_forget()
+        self._hide_current_view()
 
         self.currentContent = self.teach_view
         self.currentContent.grid(
@@ -296,6 +307,23 @@ class MainView(ctk.CTk):
 
         self.teach_view.select_camera(
             self.teach_view.selected_camera
+        )
+
+    def _show_system_view(self):
+        # System configuration should not be changed while monitoring.
+        if self.auto_viewmodel.is_monitoring:
+            self.auto_view.stop_monitoring()
+            self.start_button.configure(text="START")
+
+        self._hide_current_view()
+
+        self.currentContent = self.system_view
+        self.currentContent.grid(
+            row=0,
+            column=0,
+            padx=0,
+            pady=0,
+            sticky="nsew",
         )
 
     # -------------------------------------------------------------

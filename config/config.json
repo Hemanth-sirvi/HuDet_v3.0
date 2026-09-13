@@ -1,7 +1,10 @@
 {
-    "camera_count": 4,
+    "camera_count": 1,
     "camera_indices": null,
-    "camera_resolution": [1280, 720],
+    "camera_resolution": [
+        1280,
+        720
+    ],
     "detection": {
         "model_path": null,
         "confidence_threshold": 0.5,
@@ -17,7 +20,22 @@
         "minimum_movement": 5,
         "cooldown_frames": 10
     },
-    "counting_lines": [],
+    "counting_lines": [
+        {
+            "line_start": [
+                677,
+                28
+            ],
+            "line_end": [
+                697,
+                711
+            ],
+            "enter_side": "negative",
+            "minimum_movement": 5,
+            "cooldown_frames": 10
+        },
+        null
+    ],
     "counter": {
         "initial_count": 0
     },
