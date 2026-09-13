@@ -249,6 +249,7 @@ class MainView(ctk.CTk):
         )
 
         self.currentContent = None
+        self._system_configuration_applied = False
 
         # Both views are created once and share their ViewModels.
         self.auto_view = AutoView(
@@ -277,6 +278,14 @@ class MainView(ctk.CTk):
             self.currentContent.grid_forget()
 
     def _show_auto_view(self):
+        # System View saves configuration to disk through its ViewModel.
+        # Reload the operational ViewModels once when returning to Auto.
+        if (
+            self.currentContent is self.system_view
+            and not self.auto_viewmodel.is_monitoring
+        ):
+            self._reload_operational_configuration()
+
         self._hide_current_view()
 
         self.currentContent = self.auto_view
@@ -293,6 +302,11 @@ class MainView(ctk.CTk):
         if self.auto_viewmodel.is_monitoring:
             self.auto_view.stop_monitoring()
             self.start_button.configure(text="START")
+
+        # System settings such as camera count/indices/resolution and
+        # detection/PLC parameters are consumed by AutoViewModel.
+        if self.currentContent is self.system_view:
+            self._reload_operational_configuration()
 
         self._hide_current_view()
 
@@ -325,6 +339,54 @@ class MainView(ctk.CTk):
             pady=0,
             sticky="nsew",
         )
+
+    def _reload_operational_configuration(self):
+        """
+        Rebuild Auto/Teach operational objects from the configuration
+        saved by System View.
+
+        System View is deliberately kept separate from these runtime
+        objects. Reloading here ensures the next Auto/Teach session uses
+        the newly saved camera, detection, tracking, direction, counter,
+        PLC, and safety settings.
+        """
+        old_auto_viewmodel = self.auto_viewmodel
+
+        if old_auto_viewmodel is not None:
+            try:
+                old_auto_viewmodel.shutdown()
+            except Exception:
+                pass
+
+        self.auto_viewmodel = AutoViewModel()
+
+        # Recreate TeachViewModel so its camera configuration follows the
+        # newly constructed AutoViewModel.
+        self.teach_viewmodel = TeachViewModel(
+            camera_count=self.auto_viewmodel.camera_count,
+            auto_viewmodel=self.auto_viewmodel,
+        )
+
+        # Existing view instances hold references to their old ViewModels.
+        # Replace only these two views; SystemView itself remains intact.
+        if self.auto_view is not None:
+            self.auto_view.destroy()
+
+        if self.teach_view is not None:
+            self.teach_view.destroy()
+
+        self.auto_view = AutoView(
+            self.content,
+            viewmodel=self.auto_viewmodel,
+        )
+
+        self.teach_view = TeachView(
+            self.content,
+            viewmodel=self.teach_viewmodel,
+            camera_count=self.auto_viewmodel.camera_count,
+        )
+
+        self.start_button.configure(text="START")
 
     # -------------------------------------------------------------
     # Monitoring control

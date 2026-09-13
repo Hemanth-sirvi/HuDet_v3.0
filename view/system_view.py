@@ -1,5 +1,6 @@
 import tkinter as tk
-from tkinter import colorchooser
+from tkinter import colorchooser, filedialog
+import json
 import customtkinter as ctk
 
 
@@ -219,6 +220,58 @@ class SystemView(ctk.CTkFrame):
         self.preview_button.grid(
             row=0,
             column=3,
+            padx=(5, 10),
+            pady=10,
+        )
+
+        self.import_config_button = ctk.CTkButton(
+            self.action_frame,
+            text="IMPORT CONFIG",
+            command=self._import_config,
+            width=135,
+        )
+        self.import_config_button.grid(
+            row=0,
+            column=4,
+            padx=5,
+            pady=10,
+        )
+
+        self.export_config_button = ctk.CTkButton(
+            self.action_frame,
+            text="EXPORT CONFIG",
+            command=self._export_config,
+            width=135,
+        )
+        self.export_config_button.grid(
+            row=0,
+            column=5,
+            padx=5,
+            pady=10,
+        )
+
+        self.import_theme_button = ctk.CTkButton(
+            self.action_frame,
+            text="IMPORT THEME",
+            command=self._import_theme,
+            width=130,
+        )
+        self.import_theme_button.grid(
+            row=0,
+            column=6,
+            padx=5,
+            pady=10,
+        )
+
+        self.export_theme_button = ctk.CTkButton(
+            self.action_frame,
+            text="EXPORT THEME",
+            command=self._export_theme,
+            width=130,
+        )
+        self.export_theme_button.grid(
+            row=0,
+            column=7,
             padx=(5, 10),
             pady=10,
         )
@@ -1779,6 +1832,168 @@ class SystemView(ctk.CTkFrame):
             "application_name",
             application_name,
         )
+
+    # ------------------------------------------------------------------
+    # Import / Export
+    # ------------------------------------------------------------------
+    def _import_config(self):
+        if self.vm is None:
+            self.status_label.configure(text="No SystemViewModel connected.")
+            return
+
+        path = filedialog.askopenfilename(
+            parent=self.winfo_toplevel(),
+            title="Import Configuration",
+            filetypes=[
+                ("JSON files", "*.json"),
+                ("All files", "*.*"),
+            ],
+        )
+
+        if not path:
+            return
+
+        try:
+            with open(path, "r", encoding="utf-8") as file:
+                imported = json.load(file)
+
+            if not isinstance(imported, dict):
+                raise ValueError("Configuration file must contain a JSON object.")
+
+            # Import into the working copy only. APPLY is still required
+            # before anything is persisted to the application's config file.
+            self.vm.working_config = imported
+            normalize = getattr(self.vm, "_normalize_config", None)
+            if callable(normalize):
+                normalize()
+
+            self.status_label.configure(
+                text="Configuration imported. Review and APPLY the changes."
+            )
+            self._refresh_current_section()
+
+        except (OSError, json.JSONDecodeError, ValueError, TypeError) as exc:
+            self.status_label.configure(
+                text=f"Config import failed: {exc}"
+            )
+
+    def _export_config(self):
+        if self.vm is None:
+            self.status_label.configure(text="No SystemViewModel connected.")
+            return
+
+        path = filedialog.asksaveasfilename(
+            parent=self.winfo_toplevel(),
+            title="Export Configuration",
+            defaultextension=".json",
+            initialfile="config.json",
+            filetypes=[
+                ("JSON files", "*.json"),
+                ("All files", "*.*"),
+            ],
+        )
+
+        if not path:
+            return
+
+        try:
+            config = self.vm.get_config()
+
+            with open(path, "w", encoding="utf-8") as file:
+                json.dump(
+                    config,
+                    file,
+                    indent=4,
+                    ensure_ascii=False,
+                )
+                file.write("\n")
+
+            self.status_label.configure(
+                text="Configuration exported."
+            )
+
+        except (OSError, TypeError, ValueError) as exc:
+            self.status_label.configure(
+                text=f"Config export failed: {exc}"
+            )
+
+    def _import_theme(self):
+        if self.vm is None:
+            self.status_label.configure(text="No SystemViewModel connected.")
+            return
+
+        path = filedialog.askopenfilename(
+            parent=self.winfo_toplevel(),
+            title="Import Theme",
+            filetypes=[
+                ("JSON files", "*.json"),
+                ("All files", "*.*"),
+            ],
+        )
+
+        if not path:
+            return
+
+        try:
+            with open(path, "r", encoding="utf-8") as file:
+                imported = json.load(file)
+
+            if not isinstance(imported, dict):
+                raise ValueError("Theme file must contain a JSON object.")
+
+            # Keep the import in the working copy so PREVIEW and APPLY
+            # operate on it without modifying the saved theme immediately.
+            self.vm.working_theme = imported
+
+            self.status_label.configure(
+                text="Theme imported. Review, PREVIEW, then APPLY."
+            )
+            self._refresh_current_section()
+
+        except (OSError, json.JSONDecodeError, ValueError, TypeError) as exc:
+            self.status_label.configure(
+                text=f"Theme import failed: {exc}"
+            )
+
+    def _export_theme(self):
+        if self.vm is None:
+            self.status_label.configure(text="No SystemViewModel connected.")
+            return
+
+        path = filedialog.asksaveasfilename(
+            parent=self.winfo_toplevel(),
+            title="Export Theme",
+            defaultextension=".json",
+            initialfile="theme.json",
+            filetypes=[
+                ("JSON files", "*.json"),
+                ("All files", "*.*"),
+            ],
+        )
+
+        if not path:
+            return
+
+        try:
+            theme = self.vm.get_theme()
+
+            with open(path, "w", encoding="utf-8") as file:
+                json.dump(
+                    theme,
+                    file,
+                    indent=4,
+                    ensure_ascii=False,
+                )
+                file.write("\n")
+
+            self.status_label.configure(
+                text="Theme exported."
+            )
+
+        except (OSError, TypeError, ValueError) as exc:
+            self.status_label.configure(
+                text=f"Theme export failed: {exc}"
+            )
 
     # ------------------------------------------------------------------
     # Actions

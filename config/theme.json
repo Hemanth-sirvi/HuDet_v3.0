@@ -5,7 +5,7 @@
     "window": {
         "title": "HUMAN DETECTION & MONITORING",
         "maximized": true,
-        "fullscreen": false,
+        "fullscreen": true,
         "header_content_footer_ratio": [
             1,
             10,
@@ -32,7 +32,7 @@
             "person_text": "#FFFFFF"
         },
         "status": {
-            "background": "#FFFFFF",
+            "background": "#E2E2E2",
             "title_text": "#111111",
             "value_text": "#111111",
             "running": "#008000",
