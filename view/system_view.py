@@ -1,7 +1,8 @@
 import tkinter as tk
-from tkinter import colorchooser, filedialog
+from tkinter import colorchooser, filedialog, messagebox
 import json
 import customtkinter as ctk
+from model.theme_manager import ThemeManager
 
 
 class SystemView(ctk.CTkFrame):

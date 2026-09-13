@@ -738,6 +738,9 @@ class AutoView(ctk.CTkFrame):
     # -------------------------------------------------------------
     # ViewModel connection
     # -------------------------------------------------------------
+    # -------------------------------------------------------------
+    # ViewModel connection
+    # -------------------------------------------------------------
     def set_viewmodel(self, viewmodel):
         """Attach an AutoViewModel to the view."""
         self.stop_monitoring()
@@ -775,6 +778,19 @@ class AutoView(ctk.CTkFrame):
                 self._on_error
             )
 
+        if hasattr(self.vm, "set_plc_connection_callback"):
+            self.vm.set_plc_connection_callback(
+                self._on_plc_connection_changed
+            )
+
+    def _on_plc_connection_changed(self, is_connected):
+        """Log PLC connection state changes."""
+        if is_connected:
+            self._append_log("PLC connected.")
+        else:
+            self._append_log("PLC disconnected.")
+
+        self._refresh_status()
     # -------------------------------------------------------------
     # Camera layout
     # -------------------------------------------------------------
