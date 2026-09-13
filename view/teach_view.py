@@ -793,9 +793,9 @@ class TeachView(ctk.CTkFrame):
         if self._overlay_canvas is None or self._display_geometry is None:
             return
 
-        # Only delete the line. The camera image is never touched while
-        # the operator is dragging.
+        # Only delete the previous line/arrow.
         self._overlay_canvas.delete("counting_line")
+        self._overlay_canvas.delete("counting_arrow")
 
         start = self._source_to_preview_coordinates(
             self.line_start
@@ -804,28 +804,160 @@ class TeachView(ctk.CTkFrame):
             self.line_end
         )
 
+        line_color = getattr(
+            self,
+            "_teach_line_color",
+            "#FF0000",
+        )
+
+        line_width = getattr(
+            self,
+            "_teach_line_width",
+            5,
+        )
+
+        # --------------------------------------------------------------
+        # Counting line
+        # --------------------------------------------------------------
         self._overlay_canvas.create_line(
             start[0],
             start[1],
             end[0],
             end[1],
-            fill=getattr(self, "_teach_line_color", "#FF0000"),
-            width=getattr(self, "_teach_line_width", 5),
+            fill=line_color,
+            width=line_width,
             tags=("counting_line",),
         )
 
-        # This is the final operation, guaranteeing that the line is
-        # above the camera image.
+        # --------------------------------------------------------------
+        # Direction arrow
+        #
+        # Positive side:
+        #     left side of line direction
+        #
+        # Negative side:
+        #     right side of line direction
+        #
+        # Since ENTER means "inside EQP", the arrow points toward
+        # whichever side is currently selected as ENTER.
+        # --------------------------------------------------------------
+        dx = end[0] - start[0]
+        dy = end[1] - start[1]
+
+        length = (dx * dx + dy * dy) ** 0.5
+
+        if length > 1:
+            # Unit vector along the counting line.
+            ux = dx / length
+            uy = dy / length
+
+            # Left-hand normal = positive side.
+            nx = -uy
+            ny = ux
+
+            if self.enter_side == "negative":
+                nx = -nx
+                ny = -ny
+
+            # Put the arrow slightly away from the line midpoint.
+            # This keeps it visually readable without covering the line.
+            midpoint_x = (start[0] + end[0]) / 2
+            midpoint_y = (start[1] + end[1]) / 2
+
+            arrow_length = min(35, max(20, length * 0.08))
+
+            # Shaft starts on the line and points toward ENTER side.
+            shaft_start_x = midpoint_x
+            shaft_start_y = midpoint_y
+
+            shaft_end_x = (
+                    midpoint_x + nx * arrow_length
+            )
+            shaft_end_y = (
+                    midpoint_y + ny * arrow_length
+            )
+
+            self._overlay_canvas.create_line(
+                shaft_start_x,
+                shaft_start_y,
+                shaft_end_x,
+                shaft_end_y,
+                fill=line_color,
+                width=max(2, line_width - 1),
+                tags=("counting_arrow",),
+            )
+
+            # ----------------------------------------------------------
+            # Arrow head
+            # ----------------------------------------------------------
+            head_length = min(
+                12,
+                max(8, arrow_length * 0.4),
+            )
+
+            head_width = min(
+                6,
+                max(4, arrow_length * 0.2),
+            )
+
+            # Perpendicular to the arrow direction.
+            px = -ny
+            py = nx
+
+            tip_x = shaft_end_x
+            tip_y = shaft_end_y
+
+            base_x = (
+                    tip_x - nx * head_length
+            )
+            base_y = (
+                    tip_y - ny * head_length
+            )
+
+            left_x = (
+                    base_x + px * head_width
+            )
+            left_y = (
+                    base_y + py * head_width
+            )
+
+            right_x = (
+                    base_x - px * head_width
+            )
+            right_y = (
+                    base_y - py * head_width
+            )
+
+            self._overlay_canvas.create_polygon(
+                tip_x,
+                tip_y,
+                left_x,
+                left_y,
+                right_x,
+                right_y,
+                fill=line_color,
+                outline=line_color,
+                tags=("counting_arrow",),
+            )
+
+        # Keep both line and arrow above the camera image.
         self._overlay_canvas.tag_raise(
             "counting_line"
         )
-
+        self._overlay_canvas.tag_raise(
+            "counting_arrow"
+        )
     # ------------------------------------------------------------------
     # Configuration
     # ------------------------------------------------------------------
 
     def _direction_changed(self):
         self.enter_side = self.enter_side_variable.get()
+
+        # Redraw the line so the direction arrow flips immediately.
+        self._draw_line()
+
+        self._update_line_status()
 
     def _load_camera_configuration(self):
         self.line_start = None

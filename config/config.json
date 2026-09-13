@@ -25,12 +25,12 @@
     "counting_lines": [
         {
             "line_start": [
-                652,
-                72
+                43,
+                388
             ],
             "line_end": [
-                669,
-                705
+                1260,
+                385
             ],
             "enter_side": "negative",
             "minimum_movement": 5,

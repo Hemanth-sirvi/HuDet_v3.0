@@ -1,6 +1,6 @@
 {
     "appearance": {
-        "mode": "dark"
+        "mode": "light"
     },
     "window": {
         "title": "HUMAN DETECTION & MONITORING",
@@ -13,64 +13,64 @@
         ]
     },
     "colors": {
-        "window_background": "#111111",
-        "frame_background": "#1B1B1B",
-        "frame_foreground": "#252525",
-        "text_primary": "#F2F2F2",
-        "text_secondary": "#B8B8B8",
+        "window_background": "#F2F2F2",
+        "frame_background": "#FFFFFF",
+        "frame_foreground": "#FFFFFF",
+        "text_primary": "#111111",
+        "text_secondary": "#555555",
         "button": {
-            "foreground": "#2D6A4F",
-            "hover": "#40916C",
+            "foreground": "#1F6AA5",
+            "hover": "#144870",
             "text": "#FFFFFF",
-            "disabled": "#555555"
+            "disabled": "#A0A0A0"
         },
         "camera": {
-            "background": "#080808",
-            "border": "#4A4A4A",
-            "counting_line": "#FFD000",
-            "person_box": "#00E676",
+            "background": "#111111",
+            "border": "#808080",
+            "counting_line": "#FF0000",
+            "person_box": "#00FF00",
             "person_text": "#FFFFFF"
         },
         "status": {
-            "background": "#202020",
-            "title_text": "#D0D0D0",
-            "value_text": "#FFFFFF",
+            "background": "#FFFFFF",
+            "title_text": "#111111",
+            "value_text": "#111111",
             "items": {
                 "monitoring": {
-                    "background": "#242424",
-                    "text": "#FFFFFF"
+                    "background": "#FFFFFF",
+                    "text": "#111111"
                 },
                 "plc": {
-                    "background": "#242424",
-                    "text": "#FFFFFF"
+                    "background": "#FFFFFF",
+                    "text": "#111111"
                 },
                 "entered": {
-                    "background": "#242424",
-                    "text": "#FFFFFF"
+                    "background": "#FFFFFF",
+                    "text": "#111111"
                 },
                 "exited": {
-                    "background": "#242424",
-                    "text": "#FFFFFF"
+                    "background": "#FFFFFF",
+                    "text": "#111111"
                 },
                 "current_people": {
-                    "background": "#242424",
-                    "text": "#FFFFFF"
+                    "background": "#FFFFFF",
+                    "text": "#111111"
                 },
                 "eqp_status": {
-                    "background": "#242424",
-                    "text": "#FFFFFF"
+                    "background": "#FFFFFF",
+                    "text": "#111111"
                 }
             },
-            "running": "#00E676",
-            "stopped": "#9E9E9E",
-            "connected": "#00E676",
-            "disconnected": "#FF5252",
-            "safe": "#00E676",
-            "not_safe": "#FF5252"
+            "running": "#008000",
+            "stopped": "#808080",
+            "connected": "#008000",
+            "disconnected": "#C00000",
+            "safe": "#008000",
+            "not_safe": "#C00000"
         },
         "log": {
-            "background": "#0D0D0D",
-            "text": "#D6D6D6"
+            "background": "#FFFFFF",
+            "text": "#111111"
         }
     },
     "fonts": {
@@ -144,8 +144,8 @@
         },
         "camera": {
             "outer_padding": 5,
-            "border_width": 1,
-            "corner_radius": 4,
+            "border_width": 0,
+            "corner_radius": 0,
             "counting_line_width": 3,
             "counting_line_endpoint_radius": 5,
             "person_box_width": 2
@@ -263,5 +263,5 @@
             "line_draw_button": "left"
         }
     },
-    "version": 1
+    "version": 0
 }
