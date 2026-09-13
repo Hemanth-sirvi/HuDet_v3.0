@@ -141,6 +141,11 @@ class AutoView(ctk.CTkFrame):
                 self._on_error
             )
 
+        if hasattr(self.vm, "set_plc_connection_callback"):
+            self.vm.set_plc_connection_callback(
+                self._on_plc_connection_change
+            )
+
     # -------------------------------------------------------------
     # Camera layout
     # -------------------------------------------------------------
@@ -401,11 +406,36 @@ class AutoView(ctk.CTkFrame):
                 text=str(counts["current"])
             )
 
+            self._refresh_plc_status()
+
         except Exception as exc:
             self._on_error(
                 -1,
                 f"Status update error: {exc}",
             )
+
+    def _refresh_plc_status(self):
+        """
+        Pull PLC connection/safety state from AutoViewModel, when it
+        exposes get_plc_status(). Falls back to the original static
+        labels if the ViewModel does not support PLC status (e.g. an
+        older or test ViewModel), so this stays backwards compatible.
+        """
+        get_plc_status = getattr(self.vm, "get_plc_status", None)
+
+        if not callable(get_plc_status):
+            return
+
+        plc_status = get_plc_status()
+
+        self.plc_value.configure(
+            text="CONNECTED" if plc_status.get("connected") else "DISCONNECTED"
+        )
+
+        safety = plc_status.get("safety", "NOT_SAFE")
+        safety_display = "SAFE" if safety == "SAFE" else "NOT SAFE"
+
+        self.safety_value.configure(text=safety_display)
 
     # -------------------------------------------------------------
     # Events and logging
@@ -426,6 +456,12 @@ class AutoView(ctk.CTkFrame):
             f"Current: {counts.get('current', 0)}"
         )
 
+        self._refresh_status()
+
+    def _on_plc_connection_change(self, is_connected):
+        self._append_log(
+            "PLC connected." if is_connected else "PLC disconnected."
+        )
         self._refresh_status()
 
     def _on_error(self, camera_index, message):

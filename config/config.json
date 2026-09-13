@@ -1,0 +1,35 @@
+{
+    "camera_count": 4,
+    "camera_indices": null,
+    "camera_resolution": [1280, 720],
+    "detection": {
+        "model_path": null,
+        "confidence_threshold": 0.5,
+        "device": null,
+        "image_size": 640
+    },
+    "tracking": {
+        "iou_threshold": 0.3,
+        "max_missed_frames": 10
+    },
+    "tracking_overrides": [],
+    "direction_defaults": {
+        "minimum_movement": 5,
+        "cooldown_frames": 10
+    },
+    "counting_lines": [],
+    "counter": {
+        "initial_count": 0
+    },
+    "plc": {
+        "host": "127.0.0.1",
+        "port": 5000,
+        "auto_connect": false,
+        "timeout": 5.0,
+        "buffer_size": 4096,
+        "encoding": "utf-8"
+    },
+    "safety": {
+        "occupancy_safety_threshold": 1
+    }
+}

@@ -3,9 +3,10 @@ class TeachViewModel:
     Coordinates Teach View configuration.
 
     This ViewModel keeps camera counting-line configuration in memory and
-    applies it to the corresponding DirectionModel when available.
-
-    Persistent storage is intentionally left outside this class for now.
+    applies it to the corresponding DirectionModel when available. When
+    the attached AutoViewModel exposes save_counting_lines_to_config()
+    (backed by ConfigManager), saving or clearing a line here also
+    persists it to disk immediately.
     """
 
     MIN_CAMERAS = 1
@@ -49,7 +50,8 @@ class TeachViewModel:
         Save one camera's counting-line configuration.
 
         The configuration is also applied to the corresponding
-        DirectionModel in AutoViewModel when available.
+        DirectionModel in AutoViewModel when available, and persisted to
+        disk when AutoViewModel exposes save_counting_lines_to_config().
         """
         self._validate_camera_index(camera_index)
 
@@ -81,6 +83,8 @@ class TeachViewModel:
             configuration,
         )
 
+        self._persist_to_config()
+
     def clear_camera_configuration(self, camera_index):
         """
         Clear the counting-line configuration for one camera.
@@ -103,6 +107,8 @@ class TeachViewModel:
                 and camera_index < len(direction_models)
             ):
                 direction_models[camera_index].reset()
+
+        self._persist_to_config()
 
     # ------------------------------------------------------------------
     # AutoViewModel integration
@@ -148,6 +154,26 @@ class TeachViewModel:
                 configuration["line_end"],
                 configuration["enter_side"],
             )
+
+    def _persist_to_config(self):
+        """
+        Ask AutoViewModel to write the current counting-line configuration
+        to disk via ConfigManager, when it supports it. This keeps
+        TeachViewModel independent of ConfigManager/file I/O directly,
+        matching the existing architecture where persistence lives
+        outside this class.
+        """
+        if self.auto_viewmodel is None:
+            return
+
+        save_to_config = getattr(
+            self.auto_viewmodel,
+            "save_counting_lines_to_config",
+            None,
+        )
+
+        if callable(save_to_config):
+            save_to_config()
 
     def _load_from_auto_viewmodel(self):
         """
@@ -228,8 +254,8 @@ class TeachViewModel:
         """
         Return configurations in a JSON-friendly format.
 
-        This method does not write a file. Persistence will be handled
-        later by the configuration layer.
+        This method does not write a file. Persistence is handled by
+        ConfigManager, via AutoViewModel.save_counting_lines_to_config().
         """
         configurations = []
 

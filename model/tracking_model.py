@@ -1,5 +1,3 @@
-
-
 class TrackingModel:
     """
     Maintains stable IDs for detected people across video frames.
@@ -152,7 +150,11 @@ class TrackingModel:
         Return currently active tracks.
 
         Tracks that temporarily missed detections are included until
-        max_missed_frames is exceeded.
+        max_missed_frames is exceeded. This is what should be fed to
+        DirectionModel so that a single dropped detection frame does not
+        wipe out a track's crossing state (see update()'s docstring for
+        why the raw return value of update() is not sufficient for that
+        purpose).
         """
         return [
             self._build_tracked_detection(track_id, track)
