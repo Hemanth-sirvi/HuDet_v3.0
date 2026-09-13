@@ -3,7 +3,7 @@ from datetime import datetime
 
 import customtkinter as ctk
 from PIL import Image
-
+import ctypes
 from model.theme_manager import ThemeManager
 from view.auto_view import AutoView
 from view.teach_view import TeachView
@@ -24,6 +24,9 @@ class MainView(ctk.CTk):
 
         self.vm = viewmodel
         self.theme_manager = ThemeManager()
+
+        self.title("")
+        self._remove_windows_titlebar(self)
 
         # Keep the main application hidden until the complete interface has
         # been initialized. Startup work is scheduled through Tk's event
@@ -100,12 +103,8 @@ class MainView(ctk.CTk):
         )
 
         self.startup_dialog = ctk.CTkToplevel(self)
-        self.startup_dialog.title(
-            self.theme_manager.get(
-                "window.title",
-                "HUMAN DETECTION & MONITORING",
-            )
-        )
+        self.startup_dialog.title("")
+        self._remove_windows_titlebar(self.startup_dialog)
         self.startup_dialog.resizable(False, False)
         self.startup_dialog.protocol(
             "WM_DELETE_WINDOW",
@@ -893,8 +892,26 @@ class MainView(ctk.CTk):
     # Window controls
     # -------------------------------------------------------------
     def _minimize(self, event=None):
-        self.iconify()
+        import ctypes
+        from ctypes import wintypes
 
+        try:
+            hwnd = wintypes.HWND(self.winfo_id())
+
+            # Get the real top-level window handle.
+            root_hwnd = ctypes.windll.user32.GetAncestor(
+                hwnd,
+                2,  # GA_ROOT
+            )
+
+            if root_hwnd:
+                ctypes.windll.user32.ShowWindow(
+                    root_hwnd,
+                    6,  # SW_MINIMIZE
+                )
+
+        except Exception:
+            pass
     def _close(self):
         try:
             if self.auto_view is not None:
@@ -906,6 +923,55 @@ class MainView(ctk.CTk):
         finally:
             self.destroy()
 
+    def _remove_windows_titlebar(self, window):
+        import ctypes
+
+        window.update_idletasks()
+
+        hwnd = ctypes.windll.user32.GetParent(window.winfo_id())
+
+        if not hwnd:
+            hwnd = window.winfo_id()
+
+        GWL_STYLE = -16
+        WS_CAPTION = 0x00C00000
+
+        SWP_NOMOVE = 0x0002
+        SWP_NOSIZE = 0x0001
+        SWP_NOZORDER = 0x0004
+        SWP_NOACTIVATE = 0x0010
+        SWP_FRAMECHANGED = 0x0020
+
+        user32 = ctypes.windll.user32
+
+        if hasattr(user32, "GetWindowLongPtrW"):
+            style = user32.GetWindowLongPtrW(hwnd, GWL_STYLE)
+            user32.SetWindowLongPtrW(
+                hwnd,
+                GWL_STYLE,
+                style & ~WS_CAPTION,
+            )
+        else:
+            style = user32.GetWindowLongW(hwnd, GWL_STYLE)
+            user32.SetWindowLongW(
+                hwnd,
+                GWL_STYLE,
+                style & ~WS_CAPTION,
+            )
+
+        user32.SetWindowPos(
+            hwnd,
+            0,
+            0,
+            0,
+            0,
+            0,
+            SWP_NOMOVE
+            | SWP_NOSIZE
+            | SWP_NOZORDER
+            | SWP_NOACTIVATE
+            | SWP_FRAMECHANGED,
+        )
 
 
 class FooterButton(ctk.CTkButton):
@@ -922,3 +988,4 @@ class FooterButton(ctk.CTkButton):
             command=command,
             **kwargs,
         )
+
