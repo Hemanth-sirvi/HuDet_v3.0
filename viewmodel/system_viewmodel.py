@@ -2,6 +2,8 @@ from copy import deepcopy
 from pathlib import Path
 import json
 
+from model.config_manager import ConfigManager
+
 
 class SystemViewModel:
     """
@@ -170,11 +172,12 @@ class SystemViewModel:
         Returns:
             True when successfully applied.
         """
+        self._sync_canonical_camera_config()
         self.validate()
 
         self._save_json(
             self.config_path,
-            self.working_config,
+            self._build_persisted_config(),
         )
 
         self._save_json(
@@ -354,12 +357,9 @@ class SystemViewModel:
                 "application_name":
                     "HUMAN DETECTION & MONITORING"
             },
-            "cameras": {
-                "count": 1,
-                "indices": [0],
-                "width": 1280,
-                "height": 720,
-            },
+            "camera_count": 1,
+            "camera_indices": [0],
+            "camera_resolution": [1280, 720],
             "detection": {
                 "model_path": "assets/yolov5mu.pt",
                 "confidence_threshold": 0.5,
@@ -430,50 +430,77 @@ class SystemViewModel:
         temporary_path.replace(path)
 
     def _normalize_config(self):
-        """
-        Make sure camera indices always match the configured camera count.
-        """
-        cameras = self.working_config.setdefault(
-            "cameras",
-            {},
+        """Normalize saved config for both System View and AutoViewModel."""
+        if not isinstance(self.working_config, dict):
+            self.working_config = {}
+
+        merged = ConfigManager._deep_merge(
+            ConfigManager._clone_defaults(),
+            self.working_config,
         )
+        self.working_config = merged
 
-        count = cameras.get(
-            "count",
-            self.MIN_CAMERAS,
+        camera_count = self.working_config.get("camera_count", self.MIN_CAMERAS)
+        camera_indices = self.working_config.get("camera_indices")
+        resolution = self.working_config.get("camera_resolution", [1280, 720])
+
+        # Accept the older System View camera section when present.
+        legacy = self.working_config.get("cameras")
+        if isinstance(legacy, dict):
+            camera_count = legacy.get("count", camera_count)
+            camera_indices = legacy.get("indices", camera_indices)
+            width = legacy.get("width")
+            height = legacy.get("height")
+            if width is not None and height is not None:
+                resolution = [width, height]
+
+        if not isinstance(camera_count, int):
+            camera_count = self.MIN_CAMERAS
+        camera_count = max(self.MIN_CAMERAS, min(self.MAX_CAMERAS, camera_count))
+
+        if not isinstance(camera_indices, list):
+            camera_indices = []
+        camera_indices = [i for i in camera_indices if isinstance(i, int)]
+        next_index = max(camera_indices) + 1 if camera_indices else 0
+        while len(camera_indices) < camera_count:
+            camera_indices.append(next_index)
+            next_index += 1
+        camera_indices = camera_indices[:camera_count]
+
+        if (not isinstance(resolution, list) or len(resolution) != 2
+                or not all(isinstance(v, int) and v > 0 for v in resolution)):
+            resolution = [1280, 720]
+
+        self.working_config["camera_count"] = camera_count
+        self.working_config["camera_indices"] = camera_indices
+        self.working_config["camera_resolution"] = resolution
+        self.working_config["cameras"] = {
+            "count": camera_count,
+            "indices": list(camera_indices),
+            "width": resolution[0],
+            "height": resolution[1],
+        }
+
+    def _sync_canonical_camera_config(self):
+        """Copy System View's camera edits into AutoViewModel's schema."""
+        cameras = self.working_config.get("cameras", {})
+        if not isinstance(cameras, dict):
+            return
+
+        current_resolution = self.working_config.get("camera_resolution", [1280, 720])
+        self.working_config["camera_count"] = cameras.get(
+            "count", self.working_config.get("camera_count", self.MIN_CAMERAS)
         )
-
-        if not isinstance(count, int):
-            count = self.MIN_CAMERAS
-
-        count = max(
-            self.MIN_CAMERAS,
-            min(self.MAX_CAMERAS, count),
-        )
-
-        indices = cameras.get(
-            "indices",
-            [],
-        )
-
-        if not isinstance(indices, list):
-            indices = []
-
-        indices = [
-            index
-            for index in indices
-            if isinstance(index, int)
+        self.working_config["camera_indices"] = list(cameras.get(
+            "indices", self.working_config.get("camera_indices", [])
+        ))
+        self.working_config["camera_resolution"] = [
+            cameras.get("width", current_resolution[0]),
+            cameras.get("height", current_resolution[1]),
         ]
 
-        next_index = (
-            max(indices) + 1
-            if indices
-            else 0
-        )
-
-        while len(indices) < count:
-            indices.append(next_index)
-            next_index += 1
-
-        cameras["count"] = count
-        cameras["indices"] = indices[:count]
+    def _build_persisted_config(self):
+        """Return the canonical config that AutoViewModel consumes."""
+        persisted = deepcopy(self.working_config)
+        persisted.pop("cameras", None)
+        return persisted

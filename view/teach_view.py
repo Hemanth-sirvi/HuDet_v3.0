@@ -4,6 +4,9 @@ import customtkinter as ctk
 from PIL import Image, ImageTk
 import cv2
 
+from model.config_manager import ConfigManager
+from model.theme_manager import ThemeManager
+
 
 class TeachView(ctk.CTkFrame):
     """
@@ -33,9 +36,15 @@ class TeachView(ctk.CTkFrame):
         super().__init__(master, **kwargs)
 
         self.vm = viewmodel
+        self.theme_manager = ThemeManager()
 
         if self.vm is not None and hasattr(self.vm, "camera_count"):
             camera_count = self.vm.camera_count
+        else:
+            try:
+                camera_count = ConfigManager().get_camera_settings()["camera_count"]
+            except Exception:
+                pass
 
         self.camera_count = max(
             self.MIN_CAMERAS,
@@ -56,10 +65,113 @@ class TeachView(ctk.CTkFrame):
         self._overlay_canvas = None
 
         self._build_layout()
+        self._apply_theme()
 
     # ------------------------------------------------------------------
-    # Layout
+    # Theme helpers
     # ------------------------------------------------------------------
+    def _theme(self, path, default=None):
+        return self.theme_manager.get(path, default)
+
+    def _theme_font(self, name, fallback=("Arial", 14, "normal")):
+        value = self._theme(f"fonts.{name}", {})
+        if not isinstance(value, dict):
+            return fallback
+        family = str(value.get("family", fallback[0]))
+        try:
+            size = int(value.get("size", fallback[1]))
+        except (TypeError, ValueError):
+            size = fallback[1]
+        weight = str(value.get("weight", fallback[2]))
+        return family, size, weight
+
+    def _theme_color(self, path, fallback):
+        value = self._theme(path, fallback)
+        return value if isinstance(value, str) else fallback
+
+    def _theme_dimension(self, path, fallback):
+        value = self._theme(path, fallback)
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return fallback
+
+    def _apply_theme(self):
+        """Apply theme.json to existing Teach View widgets."""
+        frame_bg = self._theme_color("colors.frame_background", "#FFFFFF")
+        primary = self._theme_color("colors.text_primary", "#111111")
+        secondary = self._theme_color("colors.text_secondary", "#555555")
+        button_fg = self._theme_color("colors.button.foreground", "#1F6AA5")
+        button_hover = self._theme_color("colors.button.hover", "#144870")
+        button_text = self._theme_color("colors.button.text", "#FFFFFF")
+        camera_bg = self._theme_color("colors.camera.background", "#111111")
+        line_color = self._theme_color("colors.camera.counting_line", "#FF0000")
+
+        self.configure(fg_color=self._theme_color("colors.window_background", frame_bg))
+        self.controlFrame.configure(fg_color=frame_bg)
+        self.previewFrame.configure(fg_color=frame_bg)
+        self.camera_buttons_frame.configure(fg_color=frame_bg)
+
+        title_font = self._theme_font("view_title", ("Arial", 24, "bold"))
+        section_font = self._theme_font("section_title", ("Arial", 15, "bold"))
+        normal_font = self._theme_font("normal", ("Arial", 14, "normal"))
+        camera_font = self._theme_font("camera_label", ("Arial", 14, "normal"))
+
+        self._teach_title.configure(
+            text=self._theme("teach_view.title", "TEACH"),
+            text_color=primary,
+            font=ctk.CTkFont(*title_font),
+        )
+        self._camera_title.configure(
+            text=self._theme("teach_view.camera_selector_title", "SELECT CAMERA"),
+            text_color=primary,
+            font=ctk.CTkFont(*section_font),
+        )
+        self._direction_title.configure(
+            text=self._theme("teach_view.direction_title", "ENTER DIRECTION"),
+            text_color=primary,
+            font=ctk.CTkFont(*section_font),
+        )
+        self.enter_negative.configure(text_color=primary)
+        self.enter_positive.configure(text_color=primary)
+        self.instruction_label.configure(
+            text=self._theme("teach_view.instruction", "Click and drag on the camera image to draw the counting line."),
+            text_color=secondary,
+            font=ctk.CTkFont(*normal_font),
+        )
+        self.clear_button.configure(
+            text=self._theme("teach_view.clear_button_text", "CLEAR LINE"),
+            fg_color=button_fg, hover_color=button_hover, text_color=button_text,
+            font=ctk.CTkFont(*normal_font),
+        )
+        self.save_button.configure(
+            text=self._theme("teach_view.save_button_text", "SAVE"),
+            fg_color=button_fg, hover_color=button_hover, text_color=button_text,
+            font=ctk.CTkFont(*normal_font),
+        )
+        self.status_label.configure(
+            text_color=secondary,
+            font=ctk.CTkFont(*normal_font),
+        )
+        self.preview_title_label.configure(
+            text=self._theme("auto_view.camera_label.name_template", "Camera {index}").format(index=self.selected_camera + 1),
+            text_color=primary,
+            font=ctk.CTkFont(*camera_font),
+        )
+
+        for index, button in enumerate(self.camera_buttons):
+            button.configure(
+                fg_color=button_hover if index == self.selected_camera else button_fg,
+                hover_color=button_hover,
+                text_color=button_text,
+                font=ctk.CTkFont(*normal_font),
+            )
+
+        self._teach_line_color = line_color
+        self._teach_line_width = self._theme_dimension("teach_view.line_width", 5)
+        if self._overlay_canvas is not None:
+            self._overlay_canvas.configure(bg=camera_bg)
+
     def _build_layout(self):
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
@@ -79,15 +191,15 @@ class TeachView(ctk.CTkFrame):
 
         self.controlFrame.grid_columnconfigure(0, weight=1)
 
-        title = ctk.CTkLabel(
+        self._teach_title = ctk.CTkLabel(
             self.controlFrame,
-            text="TEACH",
+            text=self._theme("teach_view.title", "TEACH"),
             font=ctk.CTkFont(
                 size=24,
                 weight="bold",
             ),
         )
-        title.grid(
+        self._teach_title.grid(
             row=0,
             column=0,
             padx=10,
@@ -95,15 +207,15 @@ class TeachView(ctk.CTkFrame):
             sticky="ew",
         )
 
-        camera_title = ctk.CTkLabel(
+        self._camera_title = ctk.CTkLabel(
             self.controlFrame,
-            text="SELECT CAMERA",
+            text=self._theme("teach_view.camera_selector_title", "SELECT CAMERA"),
             font=ctk.CTkFont(
                 size=15,
                 weight="bold",
             ),
         )
-        camera_title.grid(
+        self._camera_title.grid(
             row=1,
             column=0,
             padx=10,
@@ -125,15 +237,15 @@ class TeachView(ctk.CTkFrame):
         self.camera_buttons = []
         self._create_camera_buttons()
 
-        direction_title = ctk.CTkLabel(
+        self._direction_title = ctk.CTkLabel(
             self.controlFrame,
-            text="ENTER DIRECTION",
+            text=self._theme("teach_view.direction_title", "ENTER DIRECTION"),
             font=ctk.CTkFont(
                 size=15,
                 weight="bold",
             ),
         )
-        direction_title.grid(
+        self._direction_title.grid(
             row=3,
             column=0,
             padx=10,
@@ -177,9 +289,9 @@ class TeachView(ctk.CTkFrame):
 
         self.instruction_label = ctk.CTkLabel(
             self.controlFrame,
-            text=(
-                "Click and drag on the camera image "
-                "to draw the counting line."
+            text=self._theme(
+                "teach_view.instruction",
+                "Click and drag on the camera image to draw the counting line.",
             ),
             wraplength=220,
             justify="left",
@@ -194,7 +306,7 @@ class TeachView(ctk.CTkFrame):
 
         self.clear_button = ctk.CTkButton(
             self.controlFrame,
-            text="CLEAR LINE",
+            text=self._theme("teach_view.clear_button_text", "CLEAR LINE"),
             command=self.clear_line,
         )
         self.clear_button.grid(
@@ -207,7 +319,7 @@ class TeachView(ctk.CTkFrame):
 
         self.save_button = ctk.CTkButton(
             self.controlFrame,
-            text="SAVE",
+            text=self._theme("teach_view.save_button_text", "SAVE"),
             command=self._save,
         )
         self.save_button.grid(
@@ -220,7 +332,7 @@ class TeachView(ctk.CTkFrame):
 
         self.status_label = ctk.CTkLabel(
             self.controlFrame,
-            text="No counting line set.",
+            text=self._theme("teach_view.status_no_line", "No counting line set."),
             wraplength=220,
         )
         self.status_label.grid(
@@ -253,7 +365,10 @@ class TeachView(ctk.CTkFrame):
 
         self.preview_title_label = ctk.CTkLabel(
             self.previewFrame,
-            text="Camera 1",
+            text=self._theme(
+                "auto_view.camera_label.name_template",
+                "Camera {index}",
+            ).format(index=1),
             font=ctk.CTkFont(size=14, weight="bold"),
         )
         self.preview_title_label.grid(
@@ -297,7 +412,10 @@ class TeachView(ctk.CTkFrame):
             self.previewFrame,
             highlightthickness=0,
             bd=0,
-            bg=bg_color if bg_color else "black",
+            bg=self._theme_color(
+                "colors.camera.background",
+                bg_color if bg_color else "black",
+            ),
         )
         self._overlay_canvas.grid(
             row=1,
@@ -351,7 +469,10 @@ class TeachView(ctk.CTkFrame):
         for index in range(self.camera_count):
             button = ctk.CTkButton(
                 self.camera_buttons_frame,
-                text=f"CAM {index + 1}",
+                text=self._theme(
+                    "auto_view.camera_label.name_template",
+                    "Camera {index}",
+                ).format(index=index + 1),
                 command=lambda i=index: self.select_camera(i),
             )
 
@@ -380,7 +501,10 @@ class TeachView(ctk.CTkFrame):
 
         if hasattr(self, "preview_title_label"):
             self.preview_title_label.configure(
-                text=f"Camera {camera_index + 1}"
+                text=self._theme(
+                    "auto_view.camera_label.name_template",
+                    "Camera {index}",
+                ).format(index=camera_index + 1)
             )
 
         self._load_camera_configuration()
@@ -685,8 +809,8 @@ class TeachView(ctk.CTkFrame):
             start[1],
             end[0],
             end[1],
-            fill="red",
-            width=5,
+            fill=getattr(self, "_teach_line_color", "#FF0000"),
+            width=getattr(self, "_teach_line_width", 5),
             tags=("counting_line",),
         )
 
@@ -775,7 +899,10 @@ class TeachView(ctk.CTkFrame):
     def _save(self):
         if self.line_start is None or self.line_end is None:
             self.status_label.configure(
-                text="Draw a counting line before saving."
+                text=self._theme(
+                    "teach_view.status_save_missing_line",
+                    "Draw a counting line before saving.",
+                )
             )
             return
 
@@ -795,10 +922,10 @@ class TeachView(ctk.CTkFrame):
                 )
 
         self.status_label.configure(
-            text=(
-                f"Camera {self.selected_camera + 1} "
-                "configuration saved."
-            )
+            text=self._theme(
+                "teach_view.status_save_success_template",
+                "Camera {index} configuration saved.",
+            ).format(index=self.selected_camera + 1)
         )
 
     # ------------------------------------------------------------------
@@ -822,6 +949,8 @@ class TeachView(ctk.CTkFrame):
             if new_count != self.camera_count:
                 self.camera_count = new_count
                 self._create_camera_buttons()
+
+        self._apply_theme()
 
         self.select_camera(
             min(

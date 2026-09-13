@@ -1,6 +1,8 @@
 {
     "camera_count": 1,
-    "camera_indices": null,
+    "camera_indices": [
+        0
+    ],
     "camera_resolution": [
         1280,
         720
@@ -50,13 +52,7 @@
     "safety": {
         "occupancy_safety_threshold": 1
     },
-    "cameras": {
-        "count": 2,
-        "indices": [
-            0,
-            1
-        ],
-        "width": 1280,
-        "height": 720
+    "general": {
+        "application_name": "HUMAN DETECTION & MONITORING"
     }
 }

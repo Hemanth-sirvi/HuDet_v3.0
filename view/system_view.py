@@ -1,7 +1,9 @@
 import tkinter as tk
-from tkinter import colorchooser, filedialog
+from tkinter import colorchooser, filedialog, messagebox
 import json
 import customtkinter as ctk
+
+from model.theme_manager import ThemeManager
 
 
 class SystemView(ctk.CTkFrame):
@@ -959,18 +961,33 @@ class SystemView(ctk.CTkFrame):
 
         self._render_theme_dict(scroll_frame, theme)
 
+        self.restore_default_theme_button = ctk.CTkButton(
+            self.settings_frame,
+            text="RESTORE DEFAULT THEME",
+            command=self._restore_default_theme,
+            width=220,
+        )
+        self.restore_default_theme_button.grid(
+            row=1,
+            column=0,
+            padx=20,
+            pady=(0, 10),
+            sticky="w",
+        )
+
         hint = ctk.CTkLabel(
             self.settings_frame,
             text=(
                 "Edit the visual properties used by the application. "
                 "PREVIEW opens a temporary sample window using the current "
-                "values without saving them. APPLY saves the edited theme."
+                "values without saving them. RESTORE DEFAULT THEME resets "
+                "the working theme only. APPLY saves the edited theme."
             ),
             justify="left",
             wraplength=750,
         )
         hint.grid(
-            row=1,
+            row=2,
             column=0,
             padx=20,
             pady=(0, 15),
@@ -987,6 +1004,34 @@ class SystemView(ctk.CTkFrame):
 
         theme = get_theme()
         return theme if isinstance(theme, dict) else {}
+
+    def _restore_default_theme(self):
+        """Reset the working theme to ThemeManager's canonical defaults."""
+        if self.vm is None:
+            self.status_label.configure(text="No SystemViewModel connected.")
+            return
+
+        try:
+            confirmed = messagebox.askyesno(
+                "Restore Default Theme",
+                (
+                    "Restore all theme settings to their default values?\n\n"
+                    "This will replace the current unsaved theme edits. "
+                    "You must press APPLY to save the restored theme."
+                ),
+                parent=self.winfo_toplevel(),
+            )
+        except tk.TclError:
+            return
+
+        if not confirmed:
+            return
+
+        self.vm.working_theme = ThemeManager._clone_defaults()
+        self.status_label.configure(
+            text="Default theme restored. Review, PREVIEW, then APPLY."
+        )
+        self._refresh_current_section()
 
     def _render_theme_dict(self, parent, data, path=(), start_row=0):
         row = start_row

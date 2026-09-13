@@ -5,7 +5,7 @@
     "window": {
         "title": "HUMAN DETECTION & MONITORING",
         "maximized": true,
-        "fullscreen": true,
+        "fullscreen": false,
         "header_content_footer_ratio": [
             1,
             10,
@@ -32,9 +32,35 @@
             "person_text": "#FFFFFF"
         },
         "status": {
-            "background": "#E2E2E2",
+            "background": "#FFFFFF",
             "title_text": "#111111",
             "value_text": "#111111",
+            "items": {
+                "monitoring": {
+                    "background": "#FFFFFF",
+                    "text": "#111111"
+                },
+                "plc": {
+                    "background": "#FFFFFF",
+                    "text": "#111111"
+                },
+                "entered": {
+                    "background": "#FFFFFF",
+                    "text": "#111111"
+                },
+                "exited": {
+                    "background": "#FFFFFF",
+                    "text": "#111111"
+                },
+                "current_people": {
+                    "background": "#FFFFFF",
+                    "text": "#111111"
+                },
+                "eqp_status": {
+                    "background": "#FFFFFF",
+                    "text": "#111111"
+                }
+            },
             "running": "#008000",
             "stopped": "#808080",
             "connected": "#008000",
